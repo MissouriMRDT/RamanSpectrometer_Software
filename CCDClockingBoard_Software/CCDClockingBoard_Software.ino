@@ -67,11 +67,10 @@ void writeClock()
   Serial.println(count);
   count < NUM_COUNTS? count++: count = 0;
   */
-  if(count==7)                    HWREG(GPIO_PORTE_BASE + (B00001011 << 2)) = (B00000001);
-  else if(count==24)              HWREG(GPIO_PORTE_BASE + (B00001011 << 2)) = (B00001010);
-  else if(count==255)             HWREG(GPIO_PORTE_BASE + (B00001101 << 2)) = (B00000101);
-  else if(count==COUNTS_TO_DUMMY) HWREG(GPIO_PORTE_BASE + (B00001101 << 2)) = (B00001000);
-  else                            HWREG(GPIO_PORTE_BASE + (B00001001 << 2)) = (count&B00001001);
- count < NUM_COUNTS? count++: count = 0;
+  if(count==7)                    HWREG(GPIO_PORTE_BASE + (B00001011 << 2)) = (B00000001);  //Turn Off ICG, Turn off Sync 1
+  else if(count==24)              HWREG(GPIO_PORTE_BASE + (B00001011 << 2)) = (B00001010);  //Turn on ICG, Turn off Sync 1 
+  else if(count==255)             HWREG(GPIO_PORTE_BASE + (B00001101 << 2)) = (B00000101);  //Turn off ICG, Turn on Sync 1
+  else if(count==COUNTS_TO_DUMMY) HWREG(GPIO_PORTE_BASE + (B00001101 << 2)) = (B00001000);  //Turn off Sync 1
+  else                            HWREG(GPIO_PORTE_BASE + (B00001001 << 2)) = (count&B00001001);  //Clock as normal
+ count < NUM_COUNTS? count++: count = 0;  
 }
-

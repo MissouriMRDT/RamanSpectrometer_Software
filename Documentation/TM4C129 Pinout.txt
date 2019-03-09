@@ -1,0 +1,5 @@
+//PE0-Master Clock
+//PE1-ICG
+//PE2-Sync 1(High while transmitting)
+//PE3-SH
+//PE4-Sync 2(Trigger once every 4 outputs)
