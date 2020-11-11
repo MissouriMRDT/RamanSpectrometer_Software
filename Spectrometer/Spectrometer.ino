@@ -1,7 +1,6 @@
 /*
  * Macro Definitions
  */
-#include <Energia.h>
 #include <Ethernet.h>
 #include "RoveComm.h"
 
@@ -33,13 +32,10 @@ void setup(){
   digitalWrite(SPEC_CLK, HIGH); // Set SPEC_CLK High
   digitalWrite(SPEC_ST, LOW); // Set SPEC_ST Low
 
-  Serial.begin(115200); // Baud Rate set to 115200  
   RoveComm.begin(RC_SRASENSORSBOARD_FOURTHOCTET, &TCPServer);
-  
-  delay(100);
   last_update_time = millis();
 
-
+  Serial.begin(115200); // Baud Rate set to 115200  
 }
 
 /*
@@ -123,22 +119,30 @@ void readSpectrometer(){
  * The function below prints out data to the terminal or 
  * processing plot
  */
-void sendData(){
+void sendData()
+{
+  for (int i = 0; i < SPEC_CHANNELS; i++){
+    
+    Serial.print(data[i]);
+    Serial.print(',');
+    
+  }
+
+  Serial.print("\n");
+
+
   uint16_t first_half[144];
   uint16_t second_half[144];
 
   for(int i = 0; i < 144; i++)
   {
     first_half[i] = data[i];
-    second_half[i] = data[(288-1)-i];
+    second_half[i] = data[144+i];
   }
   
-  if(millis()-last_update_time >= SPECTROMETER_TELEM_RATE)
-  {
-      RoveComm.writeReliable(9101, 144, first_half);
-      RoveComm.writeReliable(9101, 144, second_half);
-      last_update_time = millis();
-  }
+  
+  RoveComm.write(9101, 144, first_half);
+  RoveComm.write(9101, 144, second_half);
 }
 
 void loop(){
@@ -148,8 +152,14 @@ void loop(){
   //Write some sample data back every 100 milliseconds, it is important that any
   //telemetry is NOT rate limited (using delays) as this will prevent
   //packets from arriving in a timely manner 
-  
-  readSpectrometer();
-  sendData();
+  switch(packet.data_id)
+  {
+    case RC_SRASENSORSBOARD_CAPTURE_SPECTROMETER_DATA_DATAID:
+      readSpectrometer();
+      sendData();
+      break;
+    default:
+      break;
+  }
   delay(10);  
 }
