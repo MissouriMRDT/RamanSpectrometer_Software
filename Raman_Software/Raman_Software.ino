@@ -1,4 +1,4 @@
-#include <Raman_Software.h>
+#include "Raman_Software.h"
 
 #define BAUDRATE 0
 
@@ -12,12 +12,12 @@ void setup(){
     pinMode(ROG, OUTPUT);
     pinMode(GREEN, OUTPUT);
     pinMode(RED, OUTPUT);
-    pinMode(VOUT, INPUT)
+    pinMode(VOUT, INPUT);
 }
 
 void loop(){
 
-    float timestamp = ((float) millis()) / 1000.0;
+    //float timestamp = ((float) millis()) / 1000.0;
 
 /*
     read signal from rovecomm:
@@ -40,6 +40,6 @@ void loop(){
     bool red = false;
 
 
-    DigitalWrite(GREEN, green? HIGH : LOW);
-    DigitalWrite(RED, red? HIGH : LOW);   
+    digitalWrite(GREEN, green? HIGH : LOW);
+    digitalWrite(RED, red? HIGH : LOW);   
 }

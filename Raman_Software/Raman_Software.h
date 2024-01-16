@@ -1,6 +1,6 @@
-#ifndef RAMAN_SOFTWARE.H
-#define RAMAN_SOFTWARE.H
+#ifndef RAMAN_SOFTWARE_H
+#define RAMAN_SOFTWARE_H
 
-#include <PinAssignments.h>
+#include "PinAssignments.h"
 
 #endif

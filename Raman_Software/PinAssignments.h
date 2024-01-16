@@ -1,5 +1,5 @@
-#ifndef PINASSIGNMENTS.H
-#define PINASSIGNMENTS.H
+#ifndef PINASSIGNMENTS_H
+#define PINASSIGNMENTS_H
 
 #define GREEN 0
 #define RED 1
