@@ -5,7 +5,6 @@
 
 #define CLK_FREQUENCY 1000000.0 //Hz
 #define CLK_TIMEPERIOD (1.0 / CLK_FREQUENCY) //seconds
-#define SEQUENCE_DURATION //TODO
 
 #define ROG_t7 5000 //ns
 #define CLK_t5 3000
@@ -45,7 +44,7 @@ void setup(){
     pinMode(RED, OUTPUT);
     pinMode(VOUT, INPUT);
 
-    Serial.println(CLK_DURATION);
+    Serial.println(CLK_TIMEPERIOD);
 }
 
 void loop(){
@@ -87,7 +86,7 @@ void loop(){
             clockingState = resetting;
         }
 
-        if(clockingState = resetting){ // the resetting state is the dip in the ROG before the normal clocking signal
+        if(clockingState == resetting){ // the resetting state is the dip in the ROG before the normal clocking signal
             //logic for the reset sequence at the beginning
             if(timestamp < startResetTimestamp + CLK_t5){
                 digitalWrite(CLK, HIGH);
@@ -107,7 +106,7 @@ void loop(){
 
 
 
-        if(clockingState = aquiring){ 
+        if(clockingState == aquiring){ 
             //logic for CLK
                 // (timestamp-startAquiringTimestamp)/CLK_TIMEPERIOD == number of cycles of the clock
                 // floor((timestamp-startAquiringTimestamp)/CLK_TIMEPERIOD) == number of cycles fully complete(rounded down)
