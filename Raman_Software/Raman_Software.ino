@@ -1,135 +1,110 @@
 #include "Raman_Software.h"
-#include <cmath>
 
-#define BAUDRATE 0
-
-#define CLK_FREQUENCY 1000000.0 //Hz
-#define CLK_TIMEPERIOD (1.0 / CLK_FREQUENCY) //seconds
-
-#define ROG_t7 5000 //ns
-#define CLK_t5 3000
-#define CLK_t9 3000
-
-#define PIXEL_COUNT 2048
-#define CLK_REPETITIONS 2088
-#define TEENSY_TIMETOHIGH 0//TODO measure
-#define TEENSY_TIMETOLOW 0 //TODO measure
-
-#define SH_MODE true//TODO make both options
-
-double startResetTimestamp = 0;
-double startAquiringTimestamp = 0;
-
-
-int pixelArray[PIXEL_COUNT];
-
-enum ClockingState
-{
-    idling, resetting, aquiring
-};
-
-ClockingState clockingState = idling;
-
-double getTimestamp(){
-    return ((float) millis()) / 1000.0;
-}
 
 void setup(){
     Serial.begin(BAUDRATE);
     Serial.println("setup");
 
-    pinMode(CLK, OUTPUT);
+    pinMode(CLK_OUT, OUTPUT);
     pinMode(ROG, OUTPUT);
     pinMode(GREEN, OUTPUT);
     pinMode(RED, OUTPUT);
     pinMode(VOUT, INPUT);
+    pinMode(CLK_IN, INPUT);
 
-    Serial.println(CLK_TIMEPERIOD);
+    initADC();
+    
+    analogWriteFrequency(CLK_OUT, CLK_FREQUENCY);
+    analogWrite(CLK_OUT, 0);//50% duty cycle
+    Serial.println(CLK_TIMEPERIOD*CLK_REPETITIONS*1000.0);
+
+    
+    Serial.println("RoveComm Initializing...");
+    RoveComm.begin(RC_ARMBOARD_FIRSTOCTET, RC_ARMBOARD_SECONDOCTET, RC_ARMBOARD_THIRDOCTET, RC_ARMBOARD_FOURTHOCTET, &TCPServer);
+    Serial.println("Complete");
 }
 
+
 void loop(){
+    //watchdog setup to turn off lights if there is no communication???
 
+    rovecomm_packet packet = RoveComm.read();
+    switch (packet.data_id) {
 
-/*
-    read signal from rovecomm:
-    set lights to whatever command is given
-    watchdog setup to turn off lights if there is no communication???
-    if rovecomm asks the raman spectrometer to get aquisitions, run the ccd, store the information, send the averaged signal back
-    while the ccd is not aquiring data, set the signals to the idle values at the beginning of the pulse diagram
+        case 8000:
+        {
+            readCCD();
+            RoveComm.write(8010, 500, &pixelArray[0]);
+            RoveComm.write(8011, 500, &pixelArray[500]);
+            RoveComm.write(8012, 500, &pixelArray[1000]);
+            RoveComm.write(8013, 500, &pixelArray[1500]);
+            RoveComm.write(8014, 48, &pixelArray[2000]);
 
-*/
-
-
-    float timestamp = getTimestamp();
-    //variables to read from rovecomm
-    bool green = false;
-    bool red = false;
-    bool aquireData = true; //TODO maybe have an integer representing the amount of aquisitions to take, then run the ccd for that many aquisitions, then average them, and set the ccd to idle when finished
-
-
-
-
-    digitalWrite(GREEN, green? HIGH : LOW);
-    digitalWrite(RED, red? HIGH : LOW);
-
-
-
-
-
-
-
-
-
-    if(aquireData){
-        if(clockingState == idling){ //if we are idling and we want to aquire data, we reset
-            startResetTimestamp = getTimestamp();
-            clockingState = resetting;
         }
 
-        if(clockingState == resetting){ // the resetting state is the dip in the ROG before the normal clocking signal
-            //logic for the reset sequence at the beginning
-            if(timestamp < startResetTimestamp + CLK_t5){
-                digitalWrite(CLK, HIGH);
-                digitalWrite(ROG, HIGH);
-            } else if(timestamp < startResetTimestamp + CLK_t5 + ROG_t7){
-                digitalWrite(CLK, HIGH);
-                digitalWrite(ROG, LOW);
-            } else if(timestamp < startResetTimestamp + CLK_t5 + ROG_t7 + CLK_t9){
-                digitalWrite(CLK, HIGH);
-                digitalWrite(ROG, HIGH);
-            } else{
-                startAquiringTimestamp = getTimestamp();
-                clockingState = aquiring;
-            }
-        }
-        
-
-
-
-        if(clockingState == aquiring){ 
-            //logic for CLK
-                // (timestamp-startAquiringTimestamp)/CLK_TIMEPERIOD == number of cycles of the clock
-                // floor((timestamp-startAquiringTimestamp)/CLK_TIMEPERIOD) == number of cycles fully complete(rounded down)
-                // floor((timestamp-startAquiringTimestamp)/CLK_TIMEPERIOD) * CLK_TIMEPERIOD == the start time of the latest cycle
-                // timestamp - floor((timestamp-startAquiringTimestamp)/CLK_TIMEPERIOD) * CLK_TIMEPERIOD == how far we are into the current cycle
-                // timestamp - floor((timestamp-startAquiringTimestamp)/CLK_TIMEPERIOD) * CLK_TIMEPERIOD < (CLK_TIMEPERIOD/2) == true if we are in the first half of the cycle
-            if( timestamp - floor((timestamp-startAquiringTimestamp)/CLK_TIMEPERIOD) * CLK_TIMEPERIOD < (CLK_TIMEPERIOD/2)){ //if we are at the first half of the period, set LOW
-                digitalWrite(CLK, LOW);
-            } else {//in the second half, set HIGH
-                digitalWrite(CLK, HIGH);
-            }
-
-            //logic for ROG
-            digitalWrite(ROG, HIGH);
+        case 8001:
+        {
+            uint8_t data = *((uint8_t*) packet.data);
+            digitalWrite(GREEN, (data & 1<<0)? HIGH : LOW);
+            digitalWrite(RED, (data & 1<<1)? HIGH : LOW);
         }
 
-    } else{// if the ccd is idling
-
-        digitalWrite(CLK, LOW);
-        digitalWrite(ROG, LOW);
-        delay(1000); //TODO REMOVE THIS, THIS IS TO ADD A DELAY IN BETWEEN RUNS FOR TESTING
     }
 
+}
 
+
+void initADC() {
+    // idk what this does
+	CCM_CCGR1 |= CCM_CCGR1_ADC1(CCM_CCGR_ON);
+	
+    // 4.121 us
+	// 10 bit conversion (17 clocks) plus 20 clocks for input settling
+    // async clock
+	ADC1_CFG = ADC_CFG_MODE(1) | ADC_CFG_ADSTS(2) | ADC_CFG_ADLSMP | ADC_CFG_ADIV(1) | ADC_CFG_ADICLK(3) | ADC_CFG_ADHSC;
+
+    // 3.385 us
+    // 8 bit conversion (17 clocks) plus 8 clocks for input settling
+    // async clock
+	// ADC1_CFG = ADC_CFG_MODE(0) | ADC_CFG_ADSTS(3) | ADC_CFG_ADIV(1) | ADC_CFG_ADICLK(3) | ADC_CFG_ADHSC;
+  
+    // calibrate
+	ADC1_GC = ADC_GC_CAL;
+	while (ADC1_GC & ADC_GC_CAL);
+}
+
+
+uint16_t pixel_index = 0;
+void CLK_ISR() {
+    if(pixel_index >= 33 && pixel_index < 2048+33){
+      delay(CLK_TIMEPERIOD * 0.1);
+        pixelArray[pixel_index-33] = analogRead(CLK_IN);
+    }
+    pixel_index++;
+}
+
+void readCCD(){
+   
+    pinMode(CLK_OUT, OUTPUT);
+    digitalWrite(CLK_OUT, HIGH);
+    digitalWrite(ROG, HIGH);
+    delayNanoseconds(CLK_t5);
+
+    digitalWrite(CLK_OUT, HIGH);
+    digitalWrite(ROG, LOW);
+    delayNanoseconds(ROG_t7);
+
+    digitalWrite(CLK_OUT, HIGH);
+    digitalWrite(ROG, HIGH);
+    delayNanoseconds(CLK_t9);
+    
+
+    pixel_index = 0;
+    attachInterrupt(digitalPinToInterrupt(CLK_IN), CLK_ISR, RISING);
+    digitalWrite(ROG, HIGH);
+    analogWrite(CLK_OUT, 128);
+    delay(CLK_TIMEPERIOD*CLK_REPETITIONS*1000.0);
+    detachInterrupt(digitalPinToInterrupt(CLK_IN));
+    analogWrite(CLK_OUT, 0);
 
 }
