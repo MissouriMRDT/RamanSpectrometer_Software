@@ -14,7 +14,7 @@ void setup(){
     initADC();
     
     analogWriteFrequency(CLK_OUT, CLK_FREQUENCY);
-    analogWrite(CLK_OUT, 0);//50% duty cycle
+    analogWrite(CLK_OUT, 0);
     
     Serial.println("RoveComm Initializing...");
     RoveComm.begin(RC_RAMANSPECTROMETERBOARD_FIRSTOCTET, RC_RAMANSPECTROMETERBOARD_SECONDOCTET, RC_RAMANSPECTROMETERBOARD_THIRDOCTET, RC_RAMANSPECTROMETERBOARD_FOURTHOCTET, &TCPServer);
@@ -25,13 +25,18 @@ void setup(){
 void loop(){
     //watchdog setup to turn off lights if there is no communication???
 
-    readCCD();
 
     rovecomm_packet packet = RoveComm.read();
     switch (packet.data_id) {
 
         case RC_RAMANSPECTROMETERBOARD_REQUESTREADING_DATA_ID:
         {
+            uint32_t data = ((uint32_t*) packet.data)[0];
+            for (uint16_t i = 0; i < NUM_READINGS-1; i++) {
+              readCCD(0);
+            }
+            readCCD(data);
+
             RoveComm.write(RC_RAMANSPECTROMETERBOARD_CCDREADING_PART1_DATA_ID, 500, &pixelArray[0]);
             RoveComm.write(RC_RAMANSPECTROMETERBOARD_CCDREADING_PART2_DATA_ID, 500, &pixelArray[500]);
             RoveComm.write(RC_RAMANSPECTROMETERBOARD_CCDREADING_PART3_DATA_ID, 500, &pixelArray[1000]);
@@ -46,7 +51,6 @@ void loop(){
             digitalWrite(GREEN, (data & 1<<0)? HIGH : LOW);
             digitalWrite(RED, (data & 1<<1)? HIGH : LOW);
         }
-
     }
 
 }
@@ -88,8 +92,11 @@ void CLK_ISR() {
     pixel_index++;
 }
 
-void readCCD(){
-   
+void readCCD(uint32_t integration_time){
+    if (integration_time < MIN_INTEGRATION_TIME) {
+      integration_time = MIN_INTEGRATION_TIME;
+    }
+
     pinMode(CLK_OUT, OUTPUT);
     digitalWrite(CLK_OUT, HIGH);
     digitalWrite(ROG, HIGH);
@@ -102,14 +109,12 @@ void readCCD(){
     digitalWrite(CLK_OUT, HIGH);
     digitalWrite(ROG, HIGH);
     delayNanoseconds(CLK_t9);
-    
 
     pixel_index = 0;
     attachInterrupt(digitalPinToInterrupt(CLK_IN), CLK_ISR, RISING);
     digitalWrite(ROG, HIGH);
     analogWrite(CLK_OUT, 128);
-    delay(CLK_TIMEPERIOD*CLK_REPETITIONS*1000.0*1.5);
+    delay(integration_time);
     detachInterrupt(digitalPinToInterrupt(CLK_IN));
     analogWrite(CLK_OUT, 0);
-
 }

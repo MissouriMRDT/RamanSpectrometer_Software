@@ -15,6 +15,8 @@ RoveCommEthernet RoveComm;
 
 #define BAUDRATE 115200
 
+#define NUM_READINGS 10
+
 #define CLK_FREQUENCY (1000000.0/5.0) //Hz
 #define CLK_TIMEPERIOD (1.0 / CLK_FREQUENCY) //seconds
 
@@ -24,6 +26,8 @@ RoveCommEthernet RoveComm;
 
 #define PIXEL_COUNT 2048
 #define CLK_REPETITIONS 2088
+
+#define MIN_INTEGRATION_TIME (CLK_TIMEPERIOD*CLK_REPETITIONS*1000.0*1.5) // millis
 
 
 uint16_t pixelArray[PIXEL_COUNT];
