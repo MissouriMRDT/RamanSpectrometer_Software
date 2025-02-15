@@ -19,4 +19,17 @@
 // Temperature Pin
 #define TEMP 40
 
+// Motor Pins
+#define FWD 7
+#define PWM  6  
+#define CS   20
+#define RVS 4
+#define SEL  3
+
+#define SW1 41
+#define SW2 40
+
+#define FWD_LIM 22
+#define RVS_LIM 21
+
 #endif /* PINASSIGNMENTS_H */
