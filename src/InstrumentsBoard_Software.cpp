@@ -10,7 +10,6 @@ void setup() {
   RamanCCD.init(40000);
   
   pinMode(GREEN_LASER, OUTPUT);
-  pinMode(WHITE_LED, OUTPUT);
   pinMode(SEL, OUTPUT);
   pinMode(SW1, INPUT_PULLUP);
   pinMode(SW2, INPUT_PULLUP);
@@ -18,8 +17,7 @@ void setup() {
   pinMode(RVS_LIM, INPUT_PULLDOWN);
   
   digitalWrite(GREEN_LASER, LOW);
-  digitalWrite(WHITE_LED, LOW);
-
+  // TODO: remove SEL in Rev2
   digitalWrite(SEL, HIGH);
 
   InstrumentGantryMotor.init();
@@ -46,7 +44,7 @@ void loop() {
     {
       uint8_t data = ((uint8_t*) packet.data)[0];
       digitalWrite(GREEN_LASER, (data & 1<<0));
-      digitalWrite(WHITE_LED, (data & 1<<1));
+      // digitalWrite(WHITE_LED, (data & 1<<1));
       break;
     }
     
@@ -66,7 +64,7 @@ void loop() {
       RoveComm.write(RC_INSTRUMENTSBOARD_RAMANREADING_PART2_DATA_ID, 500, &pixels[500]);
       RoveComm.write(RC_INSTRUMENTSBOARD_RAMANREADING_PART3_DATA_ID, 500, &pixels[1000]);
       RoveComm.write(RC_INSTRUMENTSBOARD_RAMANREADING_PART4_DATA_ID, 500, &pixels[1500]);
-      RoveComm.write(RC_INSTRUMENTSBOARD_RAMANREADING_PART5_DATA_ID, 48, &pixels[2000]);
+      RoveComm.write(RC_INSTRUMENTSBOARD_RAMANREADING_PART5_DATA_ID, 48,  &pixels[2000]);
       break;
     }
   }
@@ -84,8 +82,3 @@ void loop() {
     InstrumentGantry.drive(0);
   }
 }
-
-// float analogMap(uint16_t measurement, uint16_t fromADC, uint16_t toADC, float fromAnalog, float toAnalog) {
-//   float slope = (toAnalog - fromAnalog) / (toADC - fromADC);
-//   return (measurement - fromADC) * slope + fromAnalog;
-// }

@@ -8,22 +8,11 @@
 #define CCD_VOUT 26
 #define GREEN_LASER 0
 
-// Hamamatsu Pins
-#define WHITE_LED 13
-#define VIDEO 14
-#define CLK 15
-#define START 16
-#define TRG 17
-#define EOS 18
-
-// Temperature Pin
-#define TEMP 40
-
 // Motor Pins
-#define FWD 7
+#define FWD  7
 #define PWM  6  
 #define CS   20
-#define RVS 4
+#define RVS  4
 #define SEL  3
 
 #define SW1 41
