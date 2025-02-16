@@ -5,9 +5,12 @@
 
 
 class ILX511 {
+public:
+    // please do not touch this
+    static uint8_t s_readPin;
 private:
     uint8_t m_CLK_OUT_pin;
-    uint8_t m_CLK_IN_pin;
+    // uint8_t m_CLK_IN_pin;
     uint8_t m_ROG_pin;
     uint8_t m_VOUT_pin;
 

@@ -6,7 +6,7 @@
 #define CCD_CLK_IN 27 // mag wire
 #define CCD_ROG 24
 #define CCD_VOUT 26
-#define GREEN_LASER 0
+#define GREEN_LASER 23
 
 // Motor Pins
 #define FWD  7

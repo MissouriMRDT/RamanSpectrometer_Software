@@ -8,6 +8,7 @@ void setup() {
 
   //miniSpec.init();
   RamanCCD.init(40000);
+  RamanCCD.s_readPin = CCD_CLK_OUT;
   
   pinMode(GREEN_LASER, OUTPUT);
   pinMode(SEL, OUTPUT);
@@ -27,7 +28,7 @@ void setup() {
   InstrumentGantry.attachHardLimits(&reverseLimit, &forwardLimit);
 
   Serial.println("RoveComm Initializing...");
-  RoveComm.begin(RC_INSTRUMENTSBOARD_IPADDRESS);
+  RoveComm.begin(RC_RAMANBOARD_IPADDRESS);
   Serial.println("Complete");
 }
 
@@ -40,16 +41,14 @@ void loop() {
   switch (packet.dataId) {
     
     // Toggle LEDs
-    case RC_INSTRUMENTSBOARD_ENABLELEDS_DATA_ID:
+    case RC_RAMANBOARD_LASER_DATA_ID:
     {
-      uint8_t data = ((uint8_t*) packet.data)[0];
-      digitalWrite(GREEN_LASER, (data & 1<<0));
-      // digitalWrite(WHITE_LED, (data & 1<<1));
+      digitalWrite(GREEN_LASER, packet.u8data[0]);
       break;
     }
     
     // Request Raman
-    case RC_INSTRUMENTSBOARD_REQUESTRAMANREADING_DATA_ID:
+    case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
     {
       uint32_t data = ((uint32_t*) packet.data)[0];
       RamanCCD.setIntegrationTime(data);
@@ -60,25 +59,54 @@ void loop() {
       uint16_t pixels[2048];
       RamanCCD.read(pixels);
 
-      RoveComm.write(RC_INSTRUMENTSBOARD_RAMANREADING_PART1_DATA_ID, 500, &pixels[0]);
-      RoveComm.write(RC_INSTRUMENTSBOARD_RAMANREADING_PART2_DATA_ID, 500, &pixels[500]);
-      RoveComm.write(RC_INSTRUMENTSBOARD_RAMANREADING_PART3_DATA_ID, 500, &pixels[1000]);
-      RoveComm.write(RC_INSTRUMENTSBOARD_RAMANREADING_PART4_DATA_ID, 500, &pixels[1500]);
-      RoveComm.write(RC_INSTRUMENTSBOARD_RAMANREADING_PART5_DATA_ID, 48,  &pixels[2000]);
+      RoveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512, &pixels[0]);
+      RoveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &pixels[512]);
+      RoveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &pixels[1024]);
+      RoveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &pixels[1536]);
       break;
+    }
+
+    case RC_RAMANBOARD_INSTRUMENTSAXIS_OPENLOOP_DATA_ID:
+    {
+      InstrumentGantry.drive(packet.i16data[0]);
+      feedWatchdog();
+      break;
+    }
+
+    case RC_RAMANBOARD_WATCHDOGOVERRIDE_DATA_ID:
+    {
+      watchdogOverride = packet.u8data[0];
+      break;
+    }
+
+    case RC_RAMANBOARD_LIMITSWITCHOVERRIDE_DATA_ID:
+    {
+      InstrumentGantry.overrideForwardHardLimit(packet.u8data[0] & (1 << 0));
+      InstrumentGantry.overrideReverseHardLimit(packet.u8data[0] & (1 << 1));
     }
   }
 
   if (!digitalRead(SW1) && digitalRead(SW2))
   {
-    InstrumentGantry.drive(900);
+    watchdogOverride = false;
+    InstrumentGantry.drive(1000);
   }
   else if (digitalRead(SW1) && !digitalRead(SW2))
   {
-    InstrumentGantry.drive(-900);
+    //watchdogOverride = false;
+    InstrumentGantry.drive(-1000);
   }
-  else
-  {
-    InstrumentGantry.drive(0);
-  }
+}
+
+void estop() {
+    watchdogStatus = 1;
+    if (!watchdogOverride) {
+        InstrumentGantry.drive(0);
+    }
+}
+
+
+void feedWatchdog() {
+    watchdogStatus = 0;
+    Watchdog.begin(estop, WATCHDOG_TIMEOUT);
 }

@@ -18,6 +18,15 @@ LimitSwitch reverseLimit(RVS_LIM);
 
 ILX511 RamanCCD(CCD_CLK_OUT, CCD_CLK_IN, CCD_ROG, CCD_VOUT);
 
+// Watchdog
+#define WATCHDOG_TIMEOUT 300000
+IntervalTimer Watchdog;
+uint8_t watchdogStatus = 0;
+uint8_t watchdogOverride = 0;
+
+void feedWatchdog();
+void estop();
+
 RoveCommEthernet RoveComm;
 
 #endif /* INSTRUMENTSBOARD_SOFTWARE_H */
