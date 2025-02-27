@@ -60,7 +60,7 @@ void CLK_ISR() {
     }
     pixel_index++;
 
-    delayMicroseconds(25);
+    delayNanoseconds(100);
     digitalWriteFast(ILX511::s_readPin, LOW);
 }
 
@@ -94,7 +94,7 @@ void ILX511::read(uint16_t data[2048]){
         // Clock and take reading
         digitalWriteFast(m_ROG_pin, HIGH);
         s_readPin = m_CLK_OUT_pin;
-        ReadTimer.begin(CLK_ISR, ((1.0f / m_CLK_freq) * 1000000)*2);
+        ReadTimer.begin(CLK_ISR, ((1.0f / m_CLK_freq) * 1000000));
         // analogWrite(m_CLK_OUT_pin, 128);
         
         /*

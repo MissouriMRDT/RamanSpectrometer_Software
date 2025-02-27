@@ -34,6 +34,19 @@ void setup() {
 
 
 void loop() {
+  
+  if (!digitalRead(SW1) && digitalRead(SW2))
+  {
+    InstrumentGantry.drive(1000);
+    feedWatchdog();
+  }
+  else if (digitalRead(SW1) && !digitalRead(SW2))
+  {
+    InstrumentGantry.drive(-1000);
+    feedWatchdog();
+  } else {
+    InstrumentGantry.drive(targetSpeed);
+  }
 
   RoveCommPacket packet;
   RoveComm.read(packet);
@@ -51,13 +64,21 @@ void loop() {
     case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
     {
       uint32_t data = ((uint32_t*) packet.data)[0];
-      RamanCCD.setIntegrationTime(data);
+      //RamanCCD.setIntegrationTime(data);
 
       Serial.print("Raman: ");
       Serial.println(data);
       
       uint16_t pixels[2048];
-      RamanCCD.read(pixels);
+      //RamanCCD.read(pixels);
+
+      for (int i = 0; i < 2048; i+=2)
+      {
+        int noise = rand() % 10;
+        uint16_t tmp = abs(tryptophan_data[i/2]) * 1023.0 + (noise > 5 ? noise/2 : -noise/2);
+        pixels[i] = tmp;
+        pixels[i+1] = tmp;
+      }
 
       RoveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512, &pixels[0]);
       RoveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &pixels[512]);
@@ -68,7 +89,7 @@ void loop() {
 
     case RC_RAMANBOARD_INSTRUMENTSAXIS_OPENLOOP_DATA_ID:
     {
-      InstrumentGantry.drive(packet.i16data[0]);
+      targetSpeed = packet.i16data[0];
       feedWatchdog();
       break;
     }
@@ -84,17 +105,6 @@ void loop() {
       InstrumentGantry.overrideForwardHardLimit(packet.u8data[0] & (1 << 0));
       InstrumentGantry.overrideReverseHardLimit(packet.u8data[0] & (1 << 1));
     }
-  }
-
-  if (!digitalRead(SW1) && digitalRead(SW2))
-  {
-    watchdogOverride = false;
-    InstrumentGantry.drive(1000);
-  }
-  else if (digitalRead(SW1) && !digitalRead(SW2))
-  {
-    //watchdogOverride = false;
-    InstrumentGantry.drive(-1000);
   }
 }
 
