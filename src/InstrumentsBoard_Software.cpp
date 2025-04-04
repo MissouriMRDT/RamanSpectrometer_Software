@@ -8,8 +8,7 @@ void setup() {
 
   //miniSpec.init();
   RamanCCD.init(40000);
-  RamanCCD.s_readPin = CCD_CLK_OUT;
-  
+
   pinMode(GREEN_LASER, OUTPUT);
   pinMode(SEL, OUTPUT);
   pinMode(SW1, INPUT_PULLUP);
@@ -70,15 +69,7 @@ void loop() {
       Serial.println(data);
       
       uint16_t pixels[2048];
-      //RamanCCD.read(pixels);
-
-      for (int i = 0; i < 2048; i+=2)
-      {
-        int noise = rand() % 10;
-        uint16_t tmp = abs(tryptophan_data[i/2]) * 1023.0 + (noise > 5 ? noise/2 : -noise/2);
-        pixels[i] = tmp;
-        pixels[i+1] = tmp;
-      }
+      RamanCCD.read(pixels);
 
       RoveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512, &pixels[0]);
       RoveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &pixels[512]);
