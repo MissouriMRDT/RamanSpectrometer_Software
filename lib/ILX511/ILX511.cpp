@@ -91,12 +91,14 @@ uint16_t *ILX511::s_pixelArray;
 IntervalTimer ILX511::ReadTimer;
 
 void ILX511::isr() {
+    s_CLKToggle = !s_CLKToggle;
     if (s_CLKToggle) {
         digitalWriteFast(s_CLKPin, LOW);
     } else {
         digitalWriteFast(s_CLKPin, HIGH);
     }
 
+    // Falling edge
     if (s_CLKToggle) {
         if (s_pixelIndex >= PIXEL_COUNT + DUMMY_COUNT) {
             return;
