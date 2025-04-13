@@ -13,10 +13,10 @@
 RoveVNH InstrumentGantryMotor(PWM, FWD, RVS, CS);
 RoveJoint InstrumentGantry(&InstrumentGantryMotor);
 
-LimitSwitch forwardLimit(FWD_LIM);
-LimitSwitch reverseLimit(RVS_LIM);
+LimitSwitch forwardLimit(LIMIT_SIWTCH_1);
+LimitSwitch reverseLimit(LIMIT_SIWTCH_2);
 
-ILX511 RamanCCD(CCD_CLK_OUT, CCD_CLK_IN, CCD_ROG, CCD_VOUT);
+ILX511 RamanCCD(CCD_CLK, CCD_ROG, CCD_VOUT);
 
 // Watchdog
 #define WATCHDOG_TIMEOUT 300000

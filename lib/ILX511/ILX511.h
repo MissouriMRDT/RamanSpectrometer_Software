@@ -2,6 +2,7 @@
 #define ILX511_H
 
 #include <stdint.h>
+#include <Arduino.h>
 
 
 class ILX511 {

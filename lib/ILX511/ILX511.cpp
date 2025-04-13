@@ -90,33 +90,35 @@ uint16_t ILX511::s_pixelIndex;
 uint16_t *ILX511::s_pixelArray;
 IntervalTimer ILX511::ReadTimer;
 
-void ILX511::isr() {
-    if (s_CLKToggle) {
-        digitalWriteFast(s_CLKPin, LOW);
-    } else {
-        digitalWriteFast(s_CLKPin, HIGH);
-    }
+void ILX511::isr() {}
+// void ILX511::isr() {
+//     s_CLKToggle = !s_CLKToggle;
+//     if (s_CLKToggle) {
+//         digitalWriteFast(s_CLKPin, LOW);
+//     } else {
+//         digitalWriteFast(s_CLKPin, HIGH);
+//     }
 
-    if (s_CLKToggle) {
-        if (s_pixelIndex >= PIXEL_COUNT + DUMMY_COUNT) {
-            return;
-        }
+//     if (s_CLKToggle) {
+//         if (s_pixelIndex >= PIXEL_COUNT + DUMMY_COUNT) {
+//             return;
+//         }
     
-        if (s_pixelIndex >= DUMMY_COUNT) {
-            delayNanoseconds(280); // rise time of VOUT
-            s_pixelArray[s_pixelIndex - DUMMY_COUNT] = analogRead(s_VOUTPin);
-        }
-        s_pixelIndex++;
-    }
-}
+//         if (s_pixelIndex >= DUMMY_COUNT) {
+//             delayNanoseconds(280); // rise time of VOUT
+//             s_pixelArray[s_pixelIndex - DUMMY_COUNT] = analogRead(s_VOUTPin);
+//         }
+//         s_pixelIndex++;
+//     }
+// }
 
 void ILX511::read(uint16_t data[2048]){
     // ADC configuration
-    analogReadAveraging(4); // This would make the ADC theoretically 4x slower
+    analogReadAveraging(1); // This would make the ADC theoretically 4x slower
     analogReadRes(10); // 8, 10, or 12
 
     // CCD behaves strangely for first couple cycles. Discard the first ones and record only the last.
-    for (uint16_t i = NUM_READINGS; i != 0; i--) {
+    // for (uint16_t i = NUM_READINGS; i != 0; i--) {
 
         // Initial state
         digitalWriteFast(m_CLK_pin, LOW);
@@ -137,15 +139,21 @@ void ILX511::read(uint16_t data[2048]){
         delayNanoseconds(CLK_t9);
 
         // Interrupt requires global variables, pass members into global equivalents
-        s_CLKPin = m_CLK_pin;
-        s_CLKToggle = false;
-        s_VOUTPin = m_VOUT_pin;
-        s_pixelIndex = 0;
-        s_pixelArray = data;
+        // s_CLKPin = m_CLK_pin;
+        // s_CLKToggle = false;
+        // s_VOUTPin = m_VOUT_pin;
+        // s_pixelIndex = 0;
+        // s_pixelArray = data;
 
         // Clock and take reading
-        ReadTimer.begin(isr, ((1.0f / m_CLK_freq) * 1'000'000) / 2); // Divide by 2 for clock toggle
-        
+        // ReadTimer.begin(isr, ((1.0f / m_CLK_freq) * 1'000'000) / 2); // Divide by 2 for clock toggle
+        static constexpr int halfPeriod = ((1.0f / 50'000) * 1'000'000) / 2;
+        for (int i = 0; i < 2087; i++) {
+            digitalWriteFast(m_CLK_pin, LOW);
+            delayMicroseconds(halfPeriod);
+            digitalWriteFast(m_CLK_pin, HIGH);
+            delayMicroseconds(halfPeriod);
+        }
         /*
         ??? weird Malacki code
         if (i == 2) {
@@ -155,9 +163,31 @@ void ILX511::read(uint16_t data[2048]){
             // Other readings are discarded, so wait as short as possible
             delay(m_minIntegrationTime);
         }*/
-        delay(m_integrationTime);
-        ReadTimer.end();
-    }
+        // delay(m_integrationTime);
+        // delay(100);
+        // ReadTimer.end();
+
+        // Initial state
+        digitalWriteFast(m_CLK_pin, LOW);
+        digitalWriteFast(m_ROG_pin, HIGH);
+        delayMicroseconds(halfPeriod); // arbitrary delay
+
+        // ROG and CLK start pulse
+        digitalWriteFast(m_CLK_pin, HIGH);
+        digitalWriteFast(m_ROG_pin, HIGH);
+        delayNanoseconds(CLK_t5);
+
+        digitalWriteFast(m_CLK_pin, HIGH);
+        digitalWriteFast(m_ROG_pin, LOW);
+        delayNanoseconds(ROG_t7);
+
+        digitalWriteFast(m_CLK_pin, HIGH);
+        digitalWriteFast(m_ROG_pin, HIGH);
+        delayNanoseconds(CLK_t9);
+
+        digitalWriteFast(m_CLK_pin, LOW);
+        digitalWriteFast(m_ROG_pin, HIGH);
+    // }
 }
 
 

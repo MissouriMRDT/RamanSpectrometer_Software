@@ -7,14 +7,14 @@ void setup() {
   Serial.println("Instruments Setup");
 
   //miniSpec.init();
-  RamanCCD.init(40000);
+  RamanCCD.init(10000);
 
   pinMode(GREEN_LASER, OUTPUT);
   pinMode(SEL, OUTPUT);
   pinMode(SW1, INPUT_PULLUP);
   pinMode(SW2, INPUT_PULLUP);
-  pinMode(FWD_LIM, INPUT_PULLDOWN);
-  pinMode(RVS_LIM, INPUT_PULLDOWN);
+  pinMode(LIMIT_SIWTCH_1, INPUT_PULLDOWN);
+  pinMode(LIMIT_SIWTCH_2, INPUT_PULLDOWN);
   
   digitalWrite(GREEN_LASER, LOW);
   // TODO: remove SEL in Rev2
@@ -29,6 +29,8 @@ void setup() {
   Serial.println("RoveComm Initializing...");
   RoveComm.begin(RC_RAMANBOARD_IPADDRESS);
   Serial.println("Complete");
+
+  pinMode(LED_BUILTIN, OUTPUT);
 }
 
 
@@ -69,7 +71,9 @@ void loop() {
       Serial.println(data);
       
       uint16_t pixels[2048];
+      digitalWrite(LED_BUILTIN, HIGH);
       RamanCCD.read(pixels);
+      digitalWrite(LED_BUILTIN, LOW);
 
       RoveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512, &pixels[0]);
       RoveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &pixels[512]);
