@@ -13,8 +13,10 @@ void setup() {
   pinMode(SEL, OUTPUT);
   pinMode(SW1, INPUT_PULLUP);
   pinMode(SW2, INPUT_PULLUP);
-  pinMode(LIMIT_SIWTCH_1, INPUT_PULLDOWN);
-  pinMode(LIMIT_SIWTCH_2, INPUT_PULLDOWN);
+  pinMode(LIMIT_SWITCH_1, INPUT_PULLDOWN);
+  pinMode(LIMIT_SWITCH_2, INPUT_PULLDOWN);
+  forwardLimit.configInvert(false);
+  reverseLimit.configInvert(false);
   
   digitalWrite(GREEN_LASER, LOW);
   // TODO: remove SEL in Rev2
@@ -22,8 +24,8 @@ void setup() {
 
   InstrumentGantryMotor.init();
 
-  forwardLimit.configInvert(true);
-  reverseLimit.configInvert(true);
+  //forwardLimit.configInvert(true);
+  //reverseLimit.configInvert(true);
   InstrumentGantry.attachHardLimits(&reverseLimit, &forwardLimit);
 
   Serial.println("RoveComm Initializing...");
@@ -38,12 +40,12 @@ void loop() {
   
   if (!digitalRead(SW1) && digitalRead(SW2))
   {
-    InstrumentGantry.drive(1000);
+    InstrumentGantry.drive(-1000);
     feedWatchdog();
   }
   else if (digitalRead(SW1) && !digitalRead(SW2))
   {
-    InstrumentGantry.drive(-1000);
+    InstrumentGantry.drive(1000);
     feedWatchdog();
   } else {
     InstrumentGantry.drive(targetSpeed);
