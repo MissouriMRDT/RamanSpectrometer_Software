@@ -28,10 +28,10 @@
 #define FAN_OUT 9
 
 // Limit Switches
-#define LIMIT_SIWTCH_1 28
-#define LIMIT_SIWTCH_2 29
-#define LIMIT_SIWTCH_3 30
-#define LIMIT_SIWTCH_4 35
+#define LIMIT_SWITCH_1 28
+#define LIMIT_SWITCH_2 29
+#define LIMIT_SWITCH_3 30
+#define LIMIT_SWITCH_4 35
 
 // Encoder Pins
 #define ENCODER_A 22

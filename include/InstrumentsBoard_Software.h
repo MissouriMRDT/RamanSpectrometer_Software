@@ -13,8 +13,8 @@
 RoveVNH InstrumentGantryMotor(PWM, FWD, RVS, CS);
 RoveJoint InstrumentGantry(&InstrumentGantryMotor);
 
-LimitSwitch forwardLimit(LIMIT_SIWTCH_1);
-LimitSwitch reverseLimit(LIMIT_SIWTCH_2);
+LimitSwitch forwardLimit(LIMIT_SWITCH_1);
+LimitSwitch reverseLimit(LIMIT_SWITCH_2);
 
 ILX511 RamanCCD(CCD_CLK, CCD_ROG, CCD_VOUT);
 
