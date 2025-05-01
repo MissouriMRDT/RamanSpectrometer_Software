@@ -89,10 +89,10 @@ void ILX511::init(uint32_t CLK_freq) {
     pinMode(m_VOUT_pin, INPUT_DISABLE);
 
     // ADC configuration
-    s_ADC->adc0->setAveraging(4);  // set number of averages
+    s_ADC->adc0->setAveraging(1);  // set number of averages
     s_ADC->adc0->setResolution(10); // set bits of resolution
-    s_ADC->adc0->setConversionSpeed(ADC_CONVERSION_SPEED::MED_SPEED); // change the conversion speed
-    s_ADC->adc0->setSamplingSpeed(ADC_SAMPLING_SPEED::MED_SPEED); // change the sampling speed
+    s_ADC->adc0->setConversionSpeed(ADC_CONVERSION_SPEED::HIGH_SPEED); // change the conversion speed
+    s_ADC->adc0->setSamplingSpeed(ADC_SAMPLING_SPEED::HIGH_SPEED); // change the sampling speed
 
     digitalWrite(m_CLK_pin, LOW);
     digitalWrite(m_ROG_pin, HIGH);
@@ -128,43 +128,51 @@ void ILX511::adc_isr() {
     s_pixelIndex++;
 }
 
-void ILX511::read(uint16_t data[PIXEL_COUNT]){
+void ILX511::read(uint16_t data[2048]) {
     // Discharge any residual voltage in the CCD by reading it several times.
     // Discard the first readings and record only the last.
     for (uint16_t i = 0; i < NUM_READINGS - 1; i++) {
         generateSignalNoRead();
+        // delay(m_minIntegrationTime);
+        delayMicroseconds(10);
     }
-
+    
     // Before final reading, wait full integration time
     // This is the real signal we care about so we let the CCD charge up
-    delay(m_minIntegrationTime);
-
+    delay(m_integrationTime);
+    
+    digitalWriteFast(36, HIGH);
+    
     // Initial state
-    // digitalWriteFast(m_CLK_pin, LOW);
-    // digitalWriteFast(m_ROG_pin, HIGH);
-    // delayMicroseconds(100); // arbitrary delay
+    digitalWriteFast(m_CLK_pin, LOW);
+    digitalWriteFast(m_ROG_pin, HIGH);
+    delayMicroseconds(10); // arbitrary delay
 
+    generateSignalNoRead();
+    
     // ROG and CLK start pulse
-    generateStartPulse();
-
+    // generateStartPulse();
+    
     // Interrupt requires global variables, pass members into global equivalents
-    s_CLKPin = m_CLK_pin;
-    s_CLKToggle = false;
-    s_VOUTPin = m_VOUT_pin;
-    s_pixelIndex = 0;
-    s_pixelArray = data;
-
-    // Clock and take reading
-    s_ReadTimer.begin(clk_isr, ((1.0f / m_CLK_freq) * 1'000'000) / 2); // Divide by 2 for clock toggle
-    s_ADC->adc0->enableInterrupts(adc_isr);
-
-    delay(m_minIntegrationTime);
-
-    s_ADC->adc0->disableInterrupts();
-    s_ReadTimer.end();
-
+    // s_CLKPin = m_CLK_pin; 
+    // s_CLKToggle = false;
+    // s_VOUTPin = m_VOUT_pin;
+    // s_pixelIndex = 0;
+    // s_pixelArray = data;
+    
+    // // Clock and take reading
+    // s_ReadTimer.begin(clk_isr, ((1.0f / m_CLK_freq) * 1'000'000) / 2); // Divide by 2 for clock toggle
+    // s_ADC->adc0->enableInterrupts(adc_isr);
+    
+    // delay(m_minIntegrationTime);
+    
+    // s_ADC->adc0->disableInterrupts();
+    // s_ReadTimer.end();
+    
     // ROG and CLK start pulse to end reading
-    generateStartPulse();
+    // generateStartPulse();
+
+    digitalWriteFast(36, LOW);
 }
 
 void ILX511::generateStartPulse() {
@@ -197,19 +205,15 @@ void ILX511::setIntegrationTime(uint32_t time_ms) {
 
 // Generate the signal from the datasheet without reading anything
 void ILX511::generateSignalNoRead() {
-    // ADC configuration
-    analogReadAveraging(1); // This would make the ADC theoretically 4x slower
-    analogReadRes(10);      // 8, 10, or 12
-
     // Initial state
     digitalWriteFast(m_CLK_pin, LOW);
     digitalWriteFast(m_ROG_pin, HIGH);
-    delayMicroseconds(100); // arbitrary delay
+    delayMicroseconds(10); // arbitrary delay
     generateStartPulse();
 
     // Clock and take reading
     uint32_t halfPeriod = ((1.0f / m_CLK_freq) * 1'000'000) / 2; // Divide by 2 for clock toggle
-    for (int i = 0; i < 2087; i++) {
+    for (int i = 0; i < 2088; i++) {
         digitalWriteFast(m_CLK_pin, LOW);
         delayMicroseconds(halfPeriod);
         digitalWriteFast(m_CLK_pin, HIGH);

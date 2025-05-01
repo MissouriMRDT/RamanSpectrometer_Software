@@ -7,12 +7,15 @@ void setup() {
   Serial.println("Instruments Setup");
 
   //miniSpec.init();
-  RamanCCD.init(10000);
+  RamanCCD.init(50'000);
+  RamanCCD.setIntegrationTime(1000);
 
   pinMode(GREEN_LASER, OUTPUT);
   pinMode(SEL, OUTPUT);
   pinMode(SW1, INPUT_PULLUP);
   pinMode(SW2, INPUT_PULLUP);
+  pinMode(GIMBAL_PWM_A, OUTPUT);
+  pinMode(GIMBAL_PWM_B, OUTPUT);
   pinMode(LIMIT_SWITCH_1, INPUT_PULLDOWN);
   pinMode(LIMIT_SWITCH_2, INPUT_PULLDOWN);
   forwardLimit.configInvert(false);
@@ -38,6 +41,19 @@ void setup() {
 
 void loop() {
   
+  // Serial.println("Taking Raman Reading...");
+  uint16_t pixels[2048];
+  memset(pixels, 0, sizeof(pixels));
+  // digitalWrite(LED_BUILTIN, HIGH);
+  RamanCCD.read(pixels);
+  // digitalWrite(LED_BUILTIN, LOW);
+  delay(100);
+  // Serial.println("Raman Data:");
+  // for (int i : pixels) {
+  //   Serial.print(i);
+  //   Serial.print(", ");
+  // }
+  // Serial.println();
   if (!digitalRead(SW1) && digitalRead(SW2))
   {
     InstrumentGantry.drive(-1000);

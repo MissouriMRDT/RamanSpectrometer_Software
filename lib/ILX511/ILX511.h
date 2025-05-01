@@ -11,18 +11,18 @@ private:
     uint8_t m_CLK_pin;
     uint8_t m_ROG_pin;
     uint8_t m_VOUT_pin;
-    
+
     uint32_t m_CLK_freq = 0;
     uint32_t m_minIntegrationTime = 0;
     uint32_t m_integrationTime = 0;
     
 public:
     ILX511(uint8_t CLK_pin, uint8_t ROG_pin, uint8_t VOUT_pin);
-    
+
     void init(uint32_t CLK_freq = 100000);
-    
+
     void setIntegrationTime(uint32_t time_ms);
-    
+
     void read(uint16_t data[2048]);
 
     void generateStartPulse();
