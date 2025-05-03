@@ -1,6 +1,9 @@
 #include "InstrumentsBoard_Software.h"
 #include <Arduino.h>
 
+uint16_t background[2048];
+bool hasBackground = false;
+
 void setup() {
   // Serial Debugger
   Serial.begin(115200);
@@ -8,7 +11,7 @@ void setup() {
 
   //miniSpec.init();
   RamanCCD.init(50'000);
-  RamanCCD.setIntegrationTime(1000);
+  RamanCCD.setIntegrationTime(5000);
 
   pinMode(GREEN_LASER, OUTPUT);
   pinMode(SEL, OUTPUT);
@@ -18,6 +21,7 @@ void setup() {
   pinMode(GIMBAL_PWM_B, OUTPUT);
   pinMode(LIMIT_SWITCH_1, INPUT_PULLDOWN);
   pinMode(LIMIT_SWITCH_2, INPUT_PULLDOWN);
+  pinMode(34, INPUT_DISABLE); // TODO: remove
   forwardLimit.configInvert(false);
   reverseLimit.configInvert(false);
   
@@ -38,31 +42,62 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
 }
 
+void takeBackgroundReading() {
+  memset(background, 0, sizeof(background));
+  RamanCCD.read(background);
+  for (int i = 0; i < 2048; i++) {
+    Serial.print(background[i]);
+    Serial.print(", ");
+  }
+  Serial.println();
 
-void loop() {
-  
+  hasBackground = true;
+}
+
+void takeRamanReading() {
   // Serial.println("Taking Raman Reading...");
   uint16_t pixels[2048];
   memset(pixels, 0, sizeof(pixels));
   // digitalWrite(LED_BUILTIN, HIGH);
   RamanCCD.read(pixels);
   // digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
   // Serial.println("Raman Data:");
-  // for (int i : pixels) {
-  //   Serial.print(i);
-  //   Serial.print(", ");
-  // }
-  // Serial.println();
+  for (int i = 0; i < 2048; i++) {
+    if (hasBackground) {
+      Serial.print(max((int)background[i] - (int)pixels[i], 0));
+    } else {
+      Serial.print(pixels[i]);
+    }
+    Serial.print(", ");
+  }
+  Serial.println();
+}
+
+void loop() {
+
+  if (Serial.available()) {
+    delay(100);
+    int integrationTime = Serial.readString().trim().toInt();
+    if (integrationTime >= 0) {
+      RamanCCD.setIntegrationTime(integrationTime);
+      takeRamanReading();
+    }
+    // Serial.println(integrationTime);
+  }
+
   if (!digitalRead(SW1) && digitalRead(SW2))
   {
-    InstrumentGantry.drive(-1000);
-    feedWatchdog();
+    // InstrumentGantry.drive(-1000);
+    // feedWatchdog();
+    takeRamanReading();
+    delay(1000);
   }
   else if (digitalRead(SW1) && !digitalRead(SW2))
   {
-    InstrumentGantry.drive(1000);
-    feedWatchdog();
+    // InstrumentGantry.drive(1000);
+    // feedWatchdog();
+    takeBackgroundReading();
+    delay(1000);
   } else {
     InstrumentGantry.drive(targetSpeed);
   }
@@ -83,7 +118,7 @@ void loop() {
     case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
     {
       uint32_t data = ((uint32_t*) packet.data)[0];
-      //RamanCCD.setIntegrationTime(data);
+      RamanCCD.setIntegrationTime(data);
 
       Serial.print("Raman: ");
       Serial.println(data);

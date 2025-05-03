@@ -55,7 +55,7 @@
 #define DUMMY_COUNT 33
 #define CLK_REPETITIONS 2088
 
-#define NUM_READINGS 4
+#define NUM_READINGS 10
 
 uint8_t ILX511::s_CLKPin;
 bool ILX511::s_CLKToggle;
@@ -63,7 +63,8 @@ uint8_t ILX511::s_VOUTPin;
 uint16_t ILX511::s_pixelIndex;
 uint16_t *ILX511::s_pixelArray;
 IntervalTimer ILX511::s_ReadTimer;
-ADC *ILX511::s_ADC = new ADC();
+// ADC *ILX511::s_ADC = new ADC();
+ADC *ILX511::s_ADC = nullptr;
 
 ILX511::ILX511(uint8_t CLK_pin, uint8_t ROG_pin, uint8_t VOUT_pin) {
   m_CLK_pin = CLK_pin;
@@ -89,10 +90,10 @@ void ILX511::init(uint32_t CLK_freq) {
     pinMode(m_VOUT_pin, INPUT_DISABLE);
 
     // ADC configuration
-    s_ADC->adc0->setAveraging(1);  // set number of averages
-    s_ADC->adc0->setResolution(10); // set bits of resolution
-    s_ADC->adc0->setConversionSpeed(ADC_CONVERSION_SPEED::HIGH_SPEED); // change the conversion speed
-    s_ADC->adc0->setSamplingSpeed(ADC_SAMPLING_SPEED::HIGH_SPEED); // change the sampling speed
+    // s_ADC->adc0->setAveraging(1);  // set number of averages
+    // s_ADC->adc0->setResolution(10); // set bits of resolution
+    // s_ADC->adc0->setConversionSpeed(ADC_CONVERSION_SPEED::HIGH_SPEED); // change the conversion speed
+    // s_ADC->adc0->setSamplingSpeed(ADC_SAMPLING_SPEED::HIGH_SPEED); // change the sampling speed
 
     digitalWrite(m_CLK_pin, LOW);
     digitalWrite(m_ROG_pin, HIGH);
@@ -114,7 +115,12 @@ void ILX511::clk_isr() {
     
         if (s_pixelIndex >= DUMMY_COUNT) {
             delayNanoseconds(280); // Rise time of VOUT
-            s_ADC->adc0->startSingleRead(s_VOUTPin); // Request ADC
+            // s_ADC->adc0->startSingleRead(s_VOUTPin); // Request ADC
+
+            if (s_pixelIndex < PIXEL_COUNT + DUMMY_COUNT) {
+                s_pixelArray[s_pixelIndex - DUMMY_COUNT] = analogRead(s_VOUTPin);
+            }
+            s_pixelIndex++;
         } else {
             s_pixelIndex++; // After DUMMY_COUNT, will be incremented by adc_isr
         }
@@ -122,10 +128,10 @@ void ILX511::clk_isr() {
 }
 
 void ILX511::adc_isr() {
-    if (s_pixelIndex < PIXEL_COUNT + DUMMY_COUNT) {
-        s_pixelArray[s_pixelIndex - DUMMY_COUNT] = s_ADC->adc0->readSingle();
-    }
-    s_pixelIndex++;
+    // if (s_pixelIndex < PIXEL_COUNT + DUMMY_COUNT) {
+    //     s_pixelArray[s_pixelIndex - DUMMY_COUNT] = s_ADC->adc0->readSingle();
+    // }
+    // s_pixelIndex++;
 }
 
 void ILX511::read(uint16_t data[2048]) {
@@ -148,29 +154,29 @@ void ILX511::read(uint16_t data[2048]) {
     digitalWriteFast(m_ROG_pin, HIGH);
     delayMicroseconds(10); // arbitrary delay
 
-    generateSignalNoRead();
+    // generateSignalNoRead();
     
     // ROG and CLK start pulse
-    // generateStartPulse();
+    generateStartPulse();
     
     // Interrupt requires global variables, pass members into global equivalents
-    // s_CLKPin = m_CLK_pin; 
-    // s_CLKToggle = false;
-    // s_VOUTPin = m_VOUT_pin;
-    // s_pixelIndex = 0;
-    // s_pixelArray = data;
+    s_CLKPin = m_CLK_pin; 
+    s_CLKToggle = false;
+    s_VOUTPin = m_VOUT_pin;
+    s_pixelIndex = 0;
+    s_pixelArray = data;
     
-    // // Clock and take reading
-    // s_ReadTimer.begin(clk_isr, ((1.0f / m_CLK_freq) * 1'000'000) / 2); // Divide by 2 for clock toggle
+    // Clock and take reading
+    s_ReadTimer.begin(clk_isr, ((1.0f / m_CLK_freq) * 1'000'000) / 2); // Divide by 2 for clock toggle
     // s_ADC->adc0->enableInterrupts(adc_isr);
     
-    // delay(m_minIntegrationTime);
+    delay(m_minIntegrationTime);
     
     // s_ADC->adc0->disableInterrupts();
-    // s_ReadTimer.end();
+    s_ReadTimer.end();
     
     // ROG and CLK start pulse to end reading
-    // generateStartPulse();
+    generateStartPulse();
 
     digitalWriteFast(36, LOW);
 }
