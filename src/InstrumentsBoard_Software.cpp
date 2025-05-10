@@ -28,6 +28,9 @@ void setup() {
   //reverseLimit.configInvert(true);
   InstrumentGantry.attachHardLimits(&reverseLimit, &forwardLimit);
 
+  panServo.attach(GIMBAL_PWM_A, 0, 180);
+  tiltServo.attach(GIMBAL_PWM_B, 0, 180);
+
   Serial.println("RoveComm Initializing...");
   RoveComm.begin(RC_RAMANBOARD_IPADDRESS);
   Serial.println("Complete");
@@ -101,6 +104,13 @@ void loop() {
     {
       InstrumentGantry.overrideForwardHardLimit(packet.u8data[0] & (1 << 0));
       InstrumentGantry.overrideReverseHardLimit(packet.u8data[0] & (1 << 1));
+    }
+
+    case RC_RAMANBOARD_RAMANGIMBALINCREMENT_DATA_ID:
+    {
+        uint16_t* data = (uint16_t*) packet.data;
+        panServo.write(panServo.read() + data[0]);
+        tiltServo.write(panServo.read() + data[1]);
     }
   }
 }
