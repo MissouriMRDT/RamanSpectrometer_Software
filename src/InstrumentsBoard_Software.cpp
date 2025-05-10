@@ -124,6 +124,7 @@ void loop() {
       Serial.println(data);
       
       uint16_t pixels[2048];
+      memset(pixels, 0, sizeof(pixels));
       digitalWrite(LED_BUILTIN, HIGH);
       RamanCCD.read(pixels);
       digitalWrite(LED_BUILTIN, LOW);

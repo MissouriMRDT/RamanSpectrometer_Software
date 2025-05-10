@@ -7,7 +7,7 @@
 #define CCD_ROG 24
 #define CCD_VOUT 14
 
-#define GREEN_LASER 33
+#define GREEN_LASER 9
 
 // Motor Pins
 #define FWD  7
