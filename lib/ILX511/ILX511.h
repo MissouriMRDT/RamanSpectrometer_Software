@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <Arduino.h>
+#include <ADC.h>
 
 
 class ILX511 {
@@ -24,15 +25,21 @@ public:
     
     void read(uint16_t data[2048]);
 
+    void ILX511::generateStartPulse();
+
 private:
     static uint8_t s_CLKPin;
     static bool s_CLKToggle;
     static uint8_t s_VOUTPin;
     static uint16_t s_pixelIndex;
     static uint16_t *s_pixelArray;
-    static void isr(void);
+    static void clk_isr(void);
+    static void adc_isr(void);
     static IntervalTimer ReadTimer;
+    static IntervalTimer s_ReadTimer;
+    static ADC *s_ADC;
 
+    void ILX511::generateSignalNoRead();
 };
 
 
