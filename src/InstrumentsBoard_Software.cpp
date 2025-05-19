@@ -28,8 +28,8 @@ void setup() {
   //reverseLimit.configInvert(true);
   InstrumentGantry.attachHardLimits(&reverseLimit, &forwardLimit);
 
-  panServo.attach(GIMBAL_PWM_A, 0, 180);
-  tiltServo.attach(GIMBAL_PWM_B, 0, 180);
+  panServo.attach(GIMBAL_PWM_A, 700, 2300);
+  tiltServo.attach(GIMBAL_PWM_B);
 
   Serial.println("RoveComm Initializing...");
   RoveComm.begin(RC_RAMANBOARD_IPADDRESS);
@@ -43,12 +43,12 @@ void loop() {
   
   if (!digitalRead(SW1) && digitalRead(SW2))
   {
-    InstrumentGantry.drive(-1000);
+    InstrumentGantry.drive(1000);
     feedWatchdog();
   }
   else if (digitalRead(SW1) && !digitalRead(SW2))
   {
-    InstrumentGantry.drive(1000);
+    InstrumentGantry.drive(-1000);
     feedWatchdog();
   } else {
     InstrumentGantry.drive(targetSpeed);
@@ -62,7 +62,7 @@ void loop() {
     // Toggle LEDs
     case RC_RAMANBOARD_LASER_DATA_ID:
     {
-      digitalWrite(GREEN_LASER, packet.u8data[0]);
+      digitalWrite(FAN_OUT, packet.u8data[0]);
       break;
     }
     
@@ -108,7 +108,7 @@ void loop() {
 
     case RC_RAMANBOARD_RAMANGIMBALINCREMENT_DATA_ID:
     {
-        uint16_t* data = (uint16_t*) packet.data;
+        int16_t* data = (int16_t*) packet.data;
         panServo.write(panServo.read() + data[0]);
         tiltServo.write(panServo.read() + data[1]);
     }

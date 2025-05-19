@@ -9,7 +9,7 @@
 #include <RoveEncoder.h>
 #include <LimitSwitch.h>
 #include "ILX511.h"
-#include "Servo.h"
+#include "PWMServo.h"
 
 RoveVNH InstrumentGantryMotor(PWM, FWD, RVS, CS);
 RoveJoint InstrumentGantry(&InstrumentGantryMotor);
@@ -19,8 +19,8 @@ LimitSwitch reverseLimit(LIMIT_SWITCH_2);
 
 ILX511 RamanCCD(CCD_CLK, CCD_ROG, CCD_VOUT);
 
-Servo panServo;
-Servo tiltServo;
+PWMServo panServo;
+PWMServo tiltServo;
 
 // Watchdog
 #define WATCHDOG_TIMEOUT 300000
