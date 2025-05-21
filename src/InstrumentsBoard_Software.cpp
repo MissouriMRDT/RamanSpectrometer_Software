@@ -4,7 +4,7 @@
 void setup() {
   // Serial Debugger
   Serial.begin(115200);
-  Serial.println("Instruments Setup");
+  //Serial.println("Instruments Setup");
 
   //miniSpec.init();
   RamanCCD.init(10000);
@@ -31,15 +31,36 @@ void setup() {
   panServo.attach(GIMBAL_PWM_A, 700, 2300);
   tiltServo.attach(GIMBAL_PWM_B);
 
-  Serial.println("RoveComm Initializing...");
+  //Serial.println("RoveComm Initializing...");
   RoveComm.begin(RC_RAMANBOARD_IPADDRESS);
-  Serial.println("Complete");
+  //Serial.println("Complete");
 
   pinMode(LED_BUILTIN, OUTPUT);
 }
 
 
 void loop() {
+
+  if (Serial.available()) {
+    delay(100);
+    int integrationTime = Serial.readString().trim().toInt();
+    if (integrationTime >= 0) {
+      RamanCCD.setIntegrationTime(integrationTime);
+      
+      uint16_t pixels[2048];
+    memset(pixels, 0, sizeof(pixels));
+    // digitalWrite(LED_BUILTIN, HIGH);
+    RamanCCD.read(pixels);
+    // digitalWrite(LED_BUILTIN, LOW);
+    // Serial.println("Raman Data:");
+    for (int i = 0; i < 2048; i++) {
+      Serial.print(pixels[i]);
+      Serial.print(", ");
+    }
+    Serial.println();
+    }
+    // Serial.println(integrationTime);
+  }
   
   if (!digitalRead(SW1) && digitalRead(SW2))
   {
@@ -72,8 +93,8 @@ void loop() {
       uint32_t data = ((uint32_t*) packet.data)[0];
       //RamanCCD.setIntegrationTime(data);
 
-      Serial.print("Raman: ");
-      Serial.println(data);
+      //Serial.print("Raman: ");
+      //Serial.println(data);
       
       uint16_t pixels[2048];
       digitalWrite(LED_BUILTIN, HIGH);
