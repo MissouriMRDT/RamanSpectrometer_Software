@@ -76,11 +76,21 @@ void takeRamanReading() {
 void loop() {
 
   if (Serial.available()) {
-    delay(100);
-    int integrationTime = Serial.readString().trim().toInt();
-    if (integrationTime >= 0) {
-      RamanCCD.setIntegrationTime(integrationTime);
-      takeRamanReading();
+    delay(10);
+    String command = Serial.readString().trim();
+    if (command == "L") {
+      // turn on laser
+      digitalWrite(FAN_OUT, HIGH);
+    } else if (command == "l") {
+      // turn off laser
+      digitalWrite(FAN_OUT, LOW);
+    } else {
+      // set integration time and take raman reading
+      int integrationTime = command.toInt();
+      if (integrationTime >= 0) {
+        RamanCCD.setIntegrationTime(integrationTime);
+        takeRamanReading();
+      }
     }
     // Serial.println(integrationTime);
   }
@@ -124,7 +134,6 @@ void loop() {
       Serial.println(data);
       
       uint16_t pixels[2048];
-      memset(pixels, 0, sizeof(pixels));
       digitalWrite(LED_BUILTIN, HIGH);
       RamanCCD.read(pixels);
       digitalWrite(LED_BUILTIN, LOW);
