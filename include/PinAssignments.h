@@ -5,7 +5,7 @@
 #define CCD_CLK 25
 // #define CCD_CLK_IN 27 // mag wire
 #define CCD_ROG 24
-#define CCD_VOUT 26 // TODO: move to analog pin
+#define CCD_VOUT 14
 
 #define GREEN_LASER 33
 

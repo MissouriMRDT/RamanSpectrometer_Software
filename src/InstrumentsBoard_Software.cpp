@@ -70,7 +70,6 @@ void loop() {
     }
   }
     // Serial.println(integrationTime);
-  }
   
   if (!digitalRead(SW1) && digitalRead(SW2))
   {
