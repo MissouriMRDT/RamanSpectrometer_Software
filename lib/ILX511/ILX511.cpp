@@ -145,7 +145,7 @@ void ILX511::read(uint16_t data[2048]) {
     
     // Before final reading, wait full integration time
     // This is the real signal we care about so we let the CCD charge up
-    delay(m_integrationTime);
+    delayMicroseconds(m_integrationTime);
     
     digitalWriteFast(36, HIGH);
     
