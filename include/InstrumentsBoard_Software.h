@@ -19,7 +19,7 @@ LimitSwitch reverseLimit(LIMIT_SWITCH_2);
 
 ILX511 RamanCCD(CCD_CLK, CCD_ROG, CCD_VOUT);
 
-PWMServo panServo;
+PWMServo rollServo;
 PWMServo tiltServo;
 
 // Watchdog

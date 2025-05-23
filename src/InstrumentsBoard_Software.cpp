@@ -28,7 +28,7 @@ void setup() {
   //reverseLimit.configInvert(true);
   InstrumentGantry.attachHardLimits(&reverseLimit, &forwardLimit);
 
-  panServo.attach(GIMBAL_PWM_A, 700, 2300);
+  rollServo.attach(GIMBAL_PWM_A, 700, 2300);
   tiltServo.attach(GIMBAL_PWM_B);
 
   //Serial.println("RoveComm Initializing...");
@@ -139,8 +139,8 @@ void loop() {
     case RC_RAMANBOARD_RAMANGIMBALINCREMENT_DATA_ID:
     {
         int16_t* data = (int16_t*) packet.data;
-        panServo.write(panServo.read() + data[0]);
-        tiltServo.write(panServo.read() + data[1]);
+        rollServo.write(rollServo.read() + data[0]);
+        tiltServo.write(rollServo.read() + data[1]);
     }
   }
 }
