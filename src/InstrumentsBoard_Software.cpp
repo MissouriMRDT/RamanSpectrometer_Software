@@ -43,7 +43,7 @@ void setup() {
 
 void loop() {
 
-  /*if (Serial.available()) {
+  if (Serial.available()) {
     delay(10);
     String command = Serial.readString().trim();
     if (command == "L") {
@@ -84,7 +84,7 @@ void loop() {
     }
       
   }
-    */
+    
     // Serial.println(integrationTime);
   
   if (!digitalRead(SW1) && digitalRead(SW2))

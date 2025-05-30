@@ -22,8 +22,8 @@ ILX511 RamanCCD(CCD_CLK, CCD_ROG, CCD_VOUT);
 
 #define PITCH_UPPER_LIMIT 150
 #define PITCH_LOWER_LIMIT 50
-#define ROLL_UPPER_LIMIT  180
-#define ROLL_LOWER_LIMIT  0
+#define ROLL_UPPER_LIMIT  170
+#define ROLL_LOWER_LIMIT  60
 PWMServo rollServo;
 PWMServo pitchServo;
 uint16_t targetPitch = 180;
