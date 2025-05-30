@@ -19,8 +19,15 @@ LimitSwitch reverseLimit(LIMIT_SWITCH_2);
 
 ILX511 RamanCCD(CCD_CLK, CCD_ROG, CCD_VOUT);
 
+
+#define PITCH_UPPER_LIMIT 150
+#define PITCH_LOWER_LIMIT 50
+#define ROLL_UPPER_LIMIT  180
+#define ROLL_LOWER_LIMIT  0
 PWMServo rollServo;
-PWMServo tiltServo;
+PWMServo pitchServo;
+uint16_t targetPitch = 180;
+uint16_t targetRoll = 180;
 
 // Watchdog
 #define WATCHDOG_TIMEOUT 300000

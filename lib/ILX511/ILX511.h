@@ -13,7 +13,7 @@ private:
     uint8_t m_VOUT_pin;
     
     uint32_t m_CLK_freq = 0;
-    uint32_t m_minIntegrationTime = 0;
+    uint32_t m_readingTime = 0; // ms
     uint32_t m_integrationTime = 0;
     
 public:

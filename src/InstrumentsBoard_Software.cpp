@@ -15,6 +15,8 @@ void setup() {
   pinMode(SW2, INPUT_PULLUP);
   pinMode(LIMIT_SWITCH_1, INPUT_PULLDOWN);
   pinMode(LIMIT_SWITCH_2, INPUT_PULLDOWN);
+  // disable just in case
+  pinMode(34, INPUT_DISABLE);
   forwardLimit.configInvert(false);
   reverseLimit.configInvert(false);
   
@@ -28,8 +30,8 @@ void setup() {
   //reverseLimit.configInvert(true);
   InstrumentGantry.attachHardLimits(&reverseLimit, &forwardLimit);
 
-  rollServo.attach(GIMBAL_PWM_A, 700, 2300);
-  tiltServo.attach(GIMBAL_PWM_B);
+  rollServo.attach(GIMBAL_PWM_A, 544, 2400);
+  pitchServo.attach(GIMBAL_PWM_B);
 
   //Serial.println("RoveComm Initializing...");
   RoveComm.begin(RC_RAMANBOARD_IPADDRESS);
@@ -41,7 +43,7 @@ void setup() {
 
 void loop() {
 
-  if (Serial.available()) {
+  /*if (Serial.available()) {
     delay(10);
     String command = Serial.readString().trim();
     if (command == "L") {
@@ -50,6 +52,18 @@ void loop() {
     } else if (command == "l") {
       // turn off laser
       digitalWrite(FAN_OUT, LOW);
+    } else if (command == "r") {
+      targetRoll += 10;
+      Serial.printf("Roll at %d \n", rollServo.read());
+    } else if (command == "p") {
+      targetPitch += 10;
+      Serial.printf("Pitch at %d", pitchServo.read());
+    } else if (command == "-r") {
+      targetRoll -= 10;
+      Serial.printf("Roll at %d \n", rollServo.read());
+    } else if (command == "-p") {
+      targetPitch -= 10;
+      Serial.printf("Pitch at %d \n", pitchServo.read());
     } else {
       // set integration time and take raman reading
       int integrationTime = command.toInt();
@@ -68,7 +82,9 @@ void loop() {
         Serial.println();
       }
     }
+      
   }
+    */
     // Serial.println(integrationTime);
   
   if (!digitalRead(SW1) && digitalRead(SW2))
@@ -99,8 +115,9 @@ void loop() {
     // Request Raman
     case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
     {
+      Serial.end();
       uint32_t data = ((uint32_t*) packet.data)[0];
-      //RamanCCD.setIntegrationTime(data);
+      RamanCCD.setIntegrationTime(data);
 
       //Serial.print("Raman: ");
       //Serial.println(data);
@@ -139,9 +156,34 @@ void loop() {
     case RC_RAMANBOARD_RAMANGIMBALINCREMENT_DATA_ID:
     {
         int16_t* data = (int16_t*) packet.data;
-        rollServo.write(rollServo.read() + data[0]);
-        tiltServo.write(rollServo.read() + data[1]);
+        targetRoll = rollServo.read() + data[0];
+        targetPitch = pitchServo.read() + data[1];
     }
+  }
+
+  rollServo.write(targetRoll);
+  pitchServo.write(targetPitch);
+
+  if (rollServo.read() > ROLL_UPPER_LIMIT)
+  {
+    targetRoll = ROLL_UPPER_LIMIT;
+    rollServo.write(ROLL_UPPER_LIMIT);
+  }
+  else if (rollServo.read() < ROLL_LOWER_LIMIT)
+  {
+    targetRoll = ROLL_LOWER_LIMIT;
+    rollServo.write(ROLL_LOWER_LIMIT);
+  }
+  
+  if (pitchServo.read() > PITCH_UPPER_LIMIT)
+  {
+    targetPitch = PITCH_UPPER_LIMIT;
+    pitchServo.write(PITCH_UPPER_LIMIT);
+  }
+  else if (pitchServo.read() < PITCH_LOWER_LIMIT)
+  {
+    targetPitch = PITCH_LOWER_LIMIT;
+    pitchServo.write(PITCH_LOWER_LIMIT);
   }
 }
 

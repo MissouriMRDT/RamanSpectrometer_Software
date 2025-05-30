@@ -79,10 +79,7 @@ void ILX511::init(uint32_t CLK_freq) {
     }
     m_CLK_freq = CLK_freq;
     
-    m_minIntegrationTime = CLK_REPETITIONS * 1.5 * 1000 / CLK_freq;
-    if (m_integrationTime < m_minIntegrationTime) {
-        m_integrationTime = m_integrationTime;
-    }
+    m_readingTime = CLK_REPETITIONS * 1000 * 1.1f / m_CLK_freq;
 
     pinMode(m_ROG_pin, OUTPUT);
     pinMode(m_CLK_pin, OUTPUT);
@@ -97,6 +94,9 @@ void ILX511::init(uint32_t CLK_freq) {
 
     digitalWrite(m_CLK_pin, LOW);
     digitalWrite(m_ROG_pin, HIGH);
+
+    //analogReadAveraging(4);
+    //analogReadResolution(10);
 }
 
 void ILX511::clk_isr() {
@@ -114,7 +114,7 @@ void ILX511::clk_isr() {
         // }
     
         if (s_pixelIndex >= DUMMY_COUNT) {
-            delayNanoseconds(280); // Rise time of VOUT
+            delayNanoseconds(280); // 280ns // Rise time of VOUT
             // s_ADC->adc0->startSingleRead(s_VOUTPin); // Request ADC
 
             if (s_pixelIndex < PIXEL_COUNT + DUMMY_COUNT) {
@@ -137,17 +137,18 @@ void ILX511::adc_isr() {
 void ILX511::read(uint16_t data[2048]) {
     // Discharge any residual voltage in the CCD by reading it several times.
     // Discard the first readings and record only the last.
+
+    memset(data, 0, 2048*sizeof(int16_t));
+
     for (uint16_t i = 0; i < NUM_READINGS - 1; i++) {
         generateSignalNoRead();
-        // delay(m_minIntegrationTime);
+        // delay(m_integrationTime);
         delayMicroseconds(10);
     }
     
     // Before final reading, wait full integration time
     // This is the real signal we care about so we let the CCD charge up
     delayMicroseconds(m_integrationTime);
-    
-    digitalWriteFast(36, HIGH);
     
     // Initial state
     digitalWriteFast(m_CLK_pin, LOW);
@@ -165,20 +166,20 @@ void ILX511::read(uint16_t data[2048]) {
     s_VOUTPin = m_VOUT_pin;
     s_pixelIndex = 0;
     s_pixelArray = data;
+
+    // s_ADC->adc0->disableInterrupts();
+    // s_ReadTimer.end();
     
     // Clock and take reading
     s_ReadTimer.begin(clk_isr, ((1.0f / m_CLK_freq) * 1'000'000) / 2); // Divide by 2 for clock toggle
     // s_ADC->adc0->enableInterrupts(adc_isr);
     
-    delay(m_minIntegrationTime);
+    delay(m_readingTime);
     
-    // s_ADC->adc0->disableInterrupts();
     s_ReadTimer.end();
     
     // ROG and CLK start pulse to end reading
     generateStartPulse();
-
-    digitalWriteFast(36, LOW);
 }
 
 void ILX511::generateStartPulse() {
@@ -202,10 +203,6 @@ void ILX511::generateStartPulse() {
 }
 
 void ILX511::setIntegrationTime(uint32_t time_ms) {
-    if (time_ms < m_minIntegrationTime) {
-        time_ms = m_minIntegrationTime;
-    }
-
     m_integrationTime = time_ms;
 }
 
