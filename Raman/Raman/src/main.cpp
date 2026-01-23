@@ -3,10 +3,9 @@
 
 void setup()
 {
+  //Setup Outputs
   pinMode(FAN_OUT, OUTPUT);
-  pinMode(LASER_OUT, OUTPUT);
-
-  //Pulldowns:
+  digitalWrite(FAN_OUT, LOW);
   pinMode(LASER_OUT, OUTPUT);
   digitalWrite(LASER_OUT, LOW);
 
@@ -21,6 +20,22 @@ void setup()
 }
 
 void loop() {
+  //Check Limit Switches:
+  if (digitalRead(LIMIT_SW1) || digitalRead(LIMIT_SW2))
+  {
+    //TODO Something with CAN
+  }
+  
+  //Check CAN Buttons
+  if (digitalRead(CAN_SW1))
+  {
+    //TODO Something with CAN
+  }
+  if (digitalRead(CAN_SW2))
+  {
+    //TODO Something with CAN
+  }
+
   //Check for RoveComm Packets:
   roveComm.read(packet); 
   
@@ -29,6 +44,7 @@ void loop() {
   { 
   //Laser Toggle
   case RC_RAMANBOARD_LASER_DATA_ID:
+
     digitalWrite(FAN_OUT, packet.i8data[0]);
     digitalWrite(LASER_OUT, packet.i8data[0]);
     break;
