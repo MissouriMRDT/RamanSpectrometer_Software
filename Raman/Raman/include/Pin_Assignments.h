@@ -19,7 +19,7 @@
 #define CAN_CRX1 23
 #define CAN_CRX2 31
 #define CAN_SW1 15
-#define CAN_SW22 16
+#define CAN_SW2 16
 
 //Limit Switches
 #define LIMIT_SW1 7 

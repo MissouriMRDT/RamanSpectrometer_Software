@@ -6,6 +6,16 @@ void setup()
   pinMode(FAN_OUT, OUTPUT);
   pinMode(LASER_OUT, OUTPUT);
 
+  //Pulldowns:
+  pinMode(LASER_OUT, OUTPUT);
+  digitalWrite(LASER_OUT, LOW);
+
+  //Inputs:
+  pinMode(LIMIT_SW1, INPUT_PULLDOWN);
+  pinMode(LIMIT_SW2, INPUT_PULLDOWN);
+  pinMode(CAN_SW1, INPUT_PULLDOWN);
+  pinMode(CAN_SW2, INPUT_PULLDOWN);
+
   //Initialize RoveComm to the core board 
   roveComm.begin(RC_RAMANBOARD_IPADDRESS);
 }
@@ -22,6 +32,7 @@ void loop() {
     digitalWrite(FAN_OUT, packet.i8data[0]);
     digitalWrite(LASER_OUT, packet.i8data[0]);
     break;
+  //Read Raman Data
   case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
     uint16_t* pixels;
     pixels = linearSensor.read();    
@@ -30,7 +41,7 @@ void loop() {
     roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, (VALID_PIXELS/4), &pixels[(VALID_PIXELS/4)]);
     roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, (VALID_PIXELS/4), &pixels[(VALID_PIXELS/4) * 2]);
     roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, (VALID_PIXELS/4), &pixels[(VALID_PIXELS/4) * 3]);
-    
+
     break;
   }
 }
