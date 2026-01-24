@@ -17,13 +17,24 @@ void setup()
 
   //Initialize RoveComm to the core board 
   roveComm.begin(RC_RAMANBOARD_IPADDRESS);
+
+  //Initialize telementary data timer
+  telemetryCounter = millis();
 }
 
 void loop() {
   //Check Limit Switches:
-  if (digitalRead(LIMIT_SW1) || digitalRead(LIMIT_SW2))
+  //if the bottom switch activated gantry can only move up, 
+  //if upper switch activated gantry can only move down, 
+  //if neither the gantry is able to move freely.
+  if (digitalRead(LIMIT_SW1) && instrumentGantrySpeed > 0 && 
+    digitalRead(LIMIT_SW2) && instrumentGantrySpeed < 0)
   {
-    //TODO Something with CAN
+   //drive 0 
+  }
+  else
+  {
+    //drive to instrument Gantry Speed 
   }
   
   //Check CAN Buttons
@@ -57,7 +68,34 @@ void loop() {
     roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, (VALID_PIXELS/4), &pixels[(VALID_PIXELS/4)]);
     roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, (VALID_PIXELS/4), &pixels[(VALID_PIXELS/4) * 2]);
     roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, (VALID_PIXELS/4), &pixels[(VALID_PIXELS/4) * 3]);
+    break;
+
+  case RC_RAMANBOARD_INSTRUMENTSAXIS_DATA_ID:
+    instrumentGantrySpeed = packet.i16data[0] >= 0 ? packet.i16data[0] / 32767. : packet.i16data[0] / 32768.;
+
+    break;
+  case RC_RAMANBOARD_WATCHDOGOVERRIDE_DATA_ID:
+    watchdogOverride = packet.i8data[0];
 
     break;
   }
+
+  if (millis() - telemetryCounter)
+  {
+    roveComm.write(RC_RAMANBOARD_POSITION_DATA_ID, );
+
+    telemetryCounter = millis();
+  }
+}
+
+//Watchdog Stuff
+void estop() {
+    if (!watchdogOverride) {
+      //TODO drive the gantry to 0
+    }
+}
+
+
+void feedWatchdog() {
+    Watchdog.begin(estop, WATCHDOG_TIMEOUT);
 }
