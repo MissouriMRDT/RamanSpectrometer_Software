@@ -23,20 +23,7 @@ void setup()
 }
 
 void loop() {
-  //Check Limit Switches:
-  //if the bottom switch activated gantry can only move up, 
-  //if upper switch activated gantry can only move down, 
-  //if neither the gantry is able to move freely.
-  if (digitalRead(LIMIT_SW1) && instrumentGantrySpeed > 0 && 
-    digitalRead(LIMIT_SW2) && instrumentGantrySpeed < 0)
-  {
-   //drive 0 
-  }
-  else
-  {
-    //drive to instrument Gantry Speed 
-  }
-  
+
   //Check CAN Buttons
   if (digitalRead(CAN_SW1))
   {
@@ -71,7 +58,7 @@ void loop() {
     break;
 
   case RC_RAMANBOARD_INSTRUMENTSAXIS_DATA_ID:
-    instrumentGantrySpeed = packet.i16data[0] >= 0 ? packet.i16data[0] / 32767. : packet.i16data[0] / 32768.;
+    instrumentGantrySpeed = floor(packet.i16data[0] >= 0 ? packet.i16data[0] / 327.67 : packet.i16data[0] / 327.68);
 
     break;
   case RC_RAMANBOARD_WATCHDOGOVERRIDE_DATA_ID:
@@ -79,6 +66,14 @@ void loop() {
 
     break;
   }
+
+  //Gantry Button Inputs
+  if (!digitalRead(CAN_SW1) && digitalRead(CAN_SW2))
+    smoco.openLoopDrive(50);
+  else if (digitalRead(CAN_SW1) && !digitalRead(CAN_SW2))
+    smoco.openLoopDrive(-50);
+  else 
+    smoco.openLoopDrive(instrumentGantrySpeed);
 
   if (millis() - telemetryCounter)
   {
@@ -91,7 +86,7 @@ void loop() {
 //Watchdog Stuff
 void estop() {
     if (!watchdogOverride) {
-      //TODO drive the gantry to 0
+      smoco.stopAndReset();
     }
 }
 

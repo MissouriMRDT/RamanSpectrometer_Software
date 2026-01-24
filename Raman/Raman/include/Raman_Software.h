@@ -20,7 +20,7 @@ S16514 linearSensor;
 
 ACAN_T4_Settings acanSettings(125 * 1000);
 Smoco smoco(&ATAN_T4_CAN, 0x00);
-float instrumentGantrySpeed = 0;
+int16_t instrumentGantrySpeed = 0;
 
 //Telemetry
 float telemetryCounter;
