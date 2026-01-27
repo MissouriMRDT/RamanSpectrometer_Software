@@ -3,6 +3,8 @@
 
 void setup()
 {
+  Serial.begin(115200);
+
   //Setup Outputs
   pinMode(FAN_OUT, OUTPUT);
   digitalWrite(FAN_OUT, LOW);
@@ -20,20 +22,23 @@ void setup()
 
   //Initialize telementary data timer
   telemetryCounter = millis();
+
+  //Initialize TOF
+  Wire.begin();
+  
+  Wire.setSCL(TOF_SCL);
+  Wire.setSDA(TOF_SDA);
+
+  byte tofAddress = identifyTofAddress();
+
+  tofSensor.begin();
+  tofSensor.VL53L4CX_Off();
+  tofSensor.InitSensor(tofAddress);
+  
+  tofSensor.VL53L4CX_StartMeasurement();
 }
 
 void loop() {
-
-  //Check CAN Buttons
-  if (digitalRead(CAN_SW1))
-  {
-    //TODO Something with CAN
-  }
-  if (digitalRead(CAN_SW2))
-  {
-    //TODO Something with CAN
-  }
-
   //Check for RoveComm Packets:
   roveComm.read(packet); 
   
@@ -77,7 +82,29 @@ void loop() {
 
   if (millis() - telemetryCounter)
   {
-    roveComm.write(RC_RAMANBOARD_POSITION_DATA_ID, );
+    //Tof Telementary Data Retrieval
+    VL53L4CX_MultiRangingData_t multiRangingData;
+    uint8_t objectsFound = 0;
+    float tofDis = FLT_MAX;
+
+    tofSensor.VL53L4CX_GetMultiRangingData(&multiRangingData);
+    objectsFound = multiRangingData.NumberOfObjectsFound;
+
+    for (int i = 0; i < objectsFound; i++)
+    {
+      float tempDis = multiRangingData.RangeData[i].RangeMilliMeter;
+      if (tempDis < tofDis)
+        tofDis = tempDis;
+    }
+
+    tofSensor.VL53L4CX_ClearInterruptAndStartMeasurement();
+
+    float tofData[2] = {0.f, tofDis};
+    roveComm.write(RC_RAMANBOARD_POSITION_DATA_ID, 2, tofData);
+
+    //Limit switches 
+    uint8_t limitSwitchData[2] = {digitalRead(LIMIT_SW1), digitalRead(LIMIT_SW2)};
+    roveComm.write(RC_RAMANBOARD_LIMITSWITCH_DATA_ID, 2, limitSwitchData);
 
     telemetryCounter = millis();
   }
@@ -93,4 +120,37 @@ void estop() {
 
 void feedWatchdog() {
     Watchdog.begin(estop, WATCHDOG_TIMEOUT);
+}
+
+
+byte identifyTofAddress()
+{
+  byte address = 1, located = 0; 
+  
+  Serial.println("Scanning for Tof address...");
+
+  while (!located && address < 127)
+  {
+    Wire.beginTransmission(address);
+    byte results = Wire.endTransmission();
+
+    if (results == 0)
+      located = 1;
+    else
+      address++;
+  }
+
+  if (located)
+  {
+    Serial.print("Device found at address 0x");
+    if (address<16) 
+      Serial.print("0");
+    Serial.println(address,HEX);
+    return address;
+  }
+  else 
+  {
+    Serial.println("No device was found");
+    return 0;
+  }
 }

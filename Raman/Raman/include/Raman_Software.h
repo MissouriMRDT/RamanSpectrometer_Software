@@ -3,10 +3,17 @@
 
 #include "Pin_Assignments.h"
 
+
 #include <Arduino.h>
+
 #include "RoveComm.h"
 #include "S16514.h"
 #include "Smoco.h"
+
+//For TOF
+#include <Wire.h>
+#include "vl53l4cx_class.h"
+#include <cfloat>
 
 //RoveComm
 RoveCommEthernet roveComm;
@@ -24,6 +31,11 @@ int16_t instrumentGantrySpeed = 0;
 
 //Telemetry
 float telemetryCounter;
+
+//TOF
+VL53L4CX tofSensor(&Wire, A1); 
+byte identifyTofAddress();
+
 
 // Watchdog
 #define WATCHDOG_TIMEOUT 300000
