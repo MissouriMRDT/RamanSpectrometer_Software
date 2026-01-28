@@ -22,7 +22,7 @@
 #define CAN_SW2 16
 
 //Limit Switches
-#define LIMIT_SW1 7 
+#define LIMIT_SW1 7     
 #define LIMIT_SW2 8
 
 //Time of Flight

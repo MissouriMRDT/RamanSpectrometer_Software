@@ -7,7 +7,7 @@
 #include <Arduino.h>
 
 #include "RoveComm.h"
-#include "S16514.h"
+//#include "S16514.h"
 #include "Smoco.h"
 
 //For TOF
@@ -20,7 +20,7 @@ RoveCommEthernet roveComm;
 RoveCommPacket packet;
 
 //Cmos
-S16514 linearSensor;
+//S16514 linearSensor;
 
 //Gantry Motor
 #define ATAN_T4_CAN ACAN_T4::can1
@@ -33,8 +33,8 @@ int16_t instrumentGantrySpeed = 0;
 float telemetryCounter;
 
 //TOF
-VL53L4CX tofSensor(&Wire, A1); 
 byte identifyTofAddress();
+VL53L4CX* tofSensor = new VL53L4CX(&Wire, TOF_GPID);
 
 
 // Watchdog
