@@ -33,6 +33,8 @@ int16_t instrumentGantrySpeed = 0;
 float telemetryCounter;
 
 //TOF
+uint16_t tofCallibrationOffset = 0;
+bool callibrationState = false;
 byte identifyTofAddress();
 VL53L4CX* tofSensor = new VL53L4CX(&Wire, TOF_GPID);
 
