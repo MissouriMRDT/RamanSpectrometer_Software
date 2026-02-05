@@ -20,13 +20,13 @@ RoveCommEthernet roveComm;
 RoveCommPacket packet;
 
 //Cmos
-//S16514 linearSensor;
+//S16514 linearSensor;                                                                                                      
 
 //Gantry Motor
 #define ATAN_T4_CAN ACAN_T4::can1
 
 ACAN_T4_Settings acanSettings(125 * 1000);
-Smoco smoco(&ATAN_T4_CAN, 0x00);
+Smoco smoco(&ATAN_T4_CAN, 0x8);
 int16_t instrumentGantrySpeed = 0;
 
 //Telemetry
@@ -47,5 +47,7 @@ uint8_t watchdogOverride = 0;
 
 void feedWatchdog();
 void estop();
+
+void receiveCAN();
 
 #endif

@@ -23,6 +23,10 @@ void setup()
 
   //CAN INNIT
   ATAN_T4_CAN.begin(acanSettings);
+  pinMode(CAN_STDBY1, OUTPUT);
+  digitalWrite(CAN_STDBY1, LOW);
+  //pinMode(CAN_STDBY2, OUTPUT);
+  //digitalWrite(CAN_STDBY2, LOW);
 
   //Initialize RoveComm to the core board 
   roveComm.begin(RC_RAMANBOARD_IPADDRESS);
@@ -43,14 +47,15 @@ void setup()
   tofSensor->VL53L4CX_Off();
   Serial.println(tofSensor->InitSensor(tofAddress));
   tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
+
+  //Smoco setup:
+  smoco.setLowPassSmoothingFactor(UINT16_MAX);                                                                                                                                                                                                                                                                                                                                                                                       
+  smoco.setSoftLimitPosition(INT32_MIN, INT32_MAX);
+  smoco.calibratePosition((INT16_MIN / 4), 0);
 }
 
 void loop() {
-  //Smoco setup:
-  smoco.setLowPassSmoothingFactor(UINT16_MAX);
-  smoco.setPID(1, 0, 0);
-  smoco.setSoftLimitPosition(INT32_MIN, INT32_MAX);
-  smoco.startPositionCalibration((INT16_MIN / 4), 0);
+  receiveCAN();
 
   //Check for RoveComm Packets:
   roveComm.read(packet); 
@@ -77,36 +82,45 @@ void loop() {
     break;
 
   case RC_RAMANBOARD_INSTRUMENTSAXIS_DATA_ID:
-    instrumentGantrySpeed = floor(packet.i16data[0] >= 0 ? packet.i16data[0] / 327.67 : packet.i16data[0] / 327.68);
+    instrumentGantrySpeed = packet.i16data[0];
+    feedWatchdog();
 
     break;
   case RC_RAMANBOARD_WATCHDOGOVERRIDE_DATA_ID:
     watchdogOverride = packet.i8data[0];
 
+
     break;
   case RC_RAMANBOARD_CALIBRATEENCODER_DATA_ID:
-    smoco.startPositionCalibration(INT16_MIN / 4, 0);
+    smoco.calibratePosition(INT16_MIN / 4, 0);
     break;
   case RC_RAMANBOARD_LIMITSWITCHOVERRIDE_DATA_ID:
     uint8_t limitData = packet.i8data[0];
-    smoco.setIgnoreLimitVariable(limitData);
+    smoco.m_ignoreLimit = limitData;
     break;
   }
   
 
   //Gantry Button Inputs
   if (!digitalRead(CAN_SW1) && digitalRead(CAN_SW2))
-    smoco.openLoopDrive(50);
+  {
+    smoco.driveOpenLoop(INT16_MAX/4);
+    feedWatchdog();
+    Serial.println("button1");
+  }
   else if (digitalRead(CAN_SW1) && !digitalRead(CAN_SW2))
-    smoco.openLoopDrive(-50);
+  {
+    smoco.driveOpenLoop(INT16_MIN/4);
+    feedWatchdog();
+  }
   else
-    smoco.openLoopDrive(instrumentGantrySpeed);
+    smoco.driveOpenLoop(instrumentGantrySpeed);
 
   //If both buttons are down then assume TOF callibration state
   if (!digitalRead(CAN_SW1) && !digitalRead(CAN_SW2))
     callibrationState = true;
 
-  if (millis() - telemetryCounter > 100)
+  if (millis() - telemetryCounter > 500)
   {
     //Tof Telementary Data Retrieval
     VL53L4CX_MultiRangingData_t multiRangingData;
@@ -132,12 +146,14 @@ void loop() {
     roveComm.write(RC_RAMANBOARD_LIMITSWITCH_DATA_ID, 2, limitSwitchData);
 
     //SMOCO ping
-    smoco.smocoPing(); 
-    uint16_t smocoPingData = smoco.getPingTimeVariable();
+    smoco.ping();
+    uint16_t smocoPingData = smoco.m_pingTime; 
     roveComm.write(RC_RAMANBOARD_SMOCOPING_DATA_ID, 1, &smocoPingData);
+    Serial.printf("Ping Data: %d\n", smocoPingData);
+
 
     //SMOCO limits
-    uint8_t limitData = (smoco.getLimitSwitchAVariable()) | (smoco.getLimitSwitchBVariable() ? (1 << 1) : 0);
+    uint8_t limitData = (smoco.m_limitSwitchA) | (smoco.m_limitSwitchB ? (1 << 1) : 0);
     roveComm.write(RC_ARMBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
 
     telemetryCounter = millis();
@@ -146,14 +162,15 @@ void loop() {
 
 //Watchdog Stuff
 void estop() {
-    //if (!watchdogOverride) {
-      //smoco.stopAndReset();
-    //}
+    if (!watchdogOverride) {
+      instrumentGantrySpeed = 0;
+      Serial.println("WATCHDOG");
+    }
 }
 
 
 void feedWatchdog() {
-    //Watchdog.begin(estop, WATCHDOG_TIMEOUT);
+    Watchdog.begin(estop, WATCHDOG_TIMEOUT);
 }
 
 
@@ -196,3 +213,15 @@ byte identifyTofAddress()
 
   return address;
 }
+
+
+void receiveCAN()
+{
+  CANMessage msg;
+  while (ATAN_T4_CAN.available())
+  {
+    ATAN_T4_CAN.receive(msg);
+    smoco.sync(msg);
+  }
+
+} 
