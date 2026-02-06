@@ -13,7 +13,6 @@ void setup()
   digitalWrite(FAN_OUT, LOW);
   pinMode(LASER_OUT, OUTPUT);
   digitalWrite(LASER_OUT, LOW);
-  
 
   //Inputs:
   pinMode(LIMIT_SW1, INPUT_PULLDOWN);
@@ -72,13 +71,8 @@ void loop() {
     break;
   //Read Raman Data
   case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
-    /*uint16_t* pixels;
-    //pixels = linearSensor.read();    
-
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, (VALID_PIXELS/4), &pixels[0]);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, (VALID_PIXELS/4), &pixels[(VALID_PIXELS/4)]);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, (VALID_PIXELS/4), &pixels[(VALID_PIXELS/4) * 2]);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, (VALID_PIXELS/4), &pixels[(VALID_PIXELS/4) * 3]);*/
+    cmosSensor.read();
+    waitForADC = true;
     break;
 
   case RC_RAMANBOARD_INSTRUMENTSAXIS_DATA_ID:
@@ -156,6 +150,18 @@ void loop() {
     uint8_t limitData = (smoco.m_limitSwitchA) | (smoco.m_limitSwitchB ? (1 << 1) : 0);
     roveComm.write(RC_ARMBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
 
+    //Sensor Data
+    adcDataP = cmosSensor.getData();
+    if (waitForADC == true && adcDataP != nullptr)
+    {
+      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 501, &adcDataP[0]);
+      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 501, &adcDataP[501]);
+      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 501, &adcDataP[1002]);
+      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 501, &adcDataP[1503]);
+
+      waitForADC = false;
+    }
+   
     telemetryCounter = millis();
   }
 }

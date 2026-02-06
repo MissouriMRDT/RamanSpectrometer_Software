@@ -36,10 +36,10 @@ private:
 
     static IntervalTimer CMOSTimer;
     static bool CMOSToggle; 
-    static uint8_t CMsOSHalfCycles;
+    static uint8_t CMOSHalfCycles;
     
     static uint16_t *adcData;
     static uint16_t adcDataCount;
 
     static bool dataState;
-}
+}; 

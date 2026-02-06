@@ -46,6 +46,10 @@ IntervalTimer Watchdog;
 uint8_t watchdogStatus = 0;
 uint8_t watchdogOverride = 0;
 
+//Sensor stuff
+Sensor cmosSensor;
+uint16_t* adcDataP;
+bool waitForADC = false;
 
 void feedWatchdog();
 void estop();
