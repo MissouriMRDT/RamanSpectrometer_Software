@@ -59,20 +59,24 @@ void Sensor::stepCMOS()
 
 void Sensor::ADCReceive()
 {
-    //ADC outputs 14 bits so shift it left 2 so that its scaled correctly
-    adcData[adcDataCount] = (SPI.transfer16(0) >> 2);
-
-    //Check for final pixel.
-    if (adcDataCount == PIXEL_COUNT)
+    //This accounts for the CMOS's integration time which is TRIG_OVER trig cycles after ST pulled low
+    if (adcDataCount > TRIG_OVER)
     {
-        SPI.endTransaction();
-        detachInterrupt(EOS);
-        digitalWrite(SS, !SELECTION_STATE);
-        CMOSTimer.end();
-        dataState = true;
+        //ADC outputs 14 bits so shift it left 2 so that its scaled correctly
+        adcData[adcDataCount] = (SPI.transfer16(0) >> 2);
+
+        //Check for final pixel. if end deinitialize sensor systems
+        if (adcDataCount == PIXEL_COUNT + TRIG_OVER) // + TRIG_OVER because we are PIXEL_COUNT after the integration time
+        {
+            SPI.endTransaction();
+            detachInterrupt(EOS);
+            digitalWrite(SS, !SELECTION_STATE);
+            CMOSTimer.end();
+            dataState = true;
+        }
     }
-    else
-        adcDataCount++;
+
+    adcDataCount++;
 }
 
 

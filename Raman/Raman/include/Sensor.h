@@ -17,7 +17,7 @@ Run ADC at 100MHZ? as long as the data would be able to transfer within 1us
 #define CMOS_CLK_SPEED 900000
 #define SELECTION_STATE HIGH //im doing this because the SPI documentation says LOW, but the ADC documentation says HIGH
 #define START_CYCLE 1//May need to change this, not totally sure
-#define PIXEL_COUNT 2004
+#define PIXEL_COUNT 2048
 #define TRIG_OVER 89
 
 class Sensor

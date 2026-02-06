@@ -100,7 +100,6 @@ void loop() {
   {
     smoco.driveOpenLoop(INT16_MAX/4);
     feedWatchdog();
-    Serial.println("button1");
   }
   else if (digitalRead(CAN_SW1) && !digitalRead(CAN_SW2))
   {
@@ -154,10 +153,10 @@ void loop() {
     adcDataP = cmosSensor.getData();
     if (waitForADC == true && adcDataP != nullptr)
     {
-      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 501, &adcDataP[0]);
-      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 501, &adcDataP[501]);
-      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 501, &adcDataP[1002]);
-      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 501, &adcDataP[1503]);
+      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512, &adcDataP[0]);
+      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
+      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
+      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
 
       waitForADC = false;
     }
