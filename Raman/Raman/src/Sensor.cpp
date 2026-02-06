@@ -3,6 +3,14 @@
 
 Sensor::Sensor()
 {
+    adcData = new uint16_t[PIXEL_COUNT];
+    spiSettings = SPISettings(ADC_CLK_SPEED, MSBFIRST, SPI_MODE0);
+}
+
+
+Sensor::~Sensor()
+{
+    delete adcData; 
 }
 
 
@@ -14,8 +22,6 @@ void Sensor::read()
     digitalWrite(ST, HIGH);
     SPI.begin();
 
-    //MAKE SURE TO DELETE THIS HOLY CRAP
-    adcData = new uint16_t[PIXEL_COUNT];
     adcDataCount = 0;
 
     dataState = false;
@@ -23,7 +29,6 @@ void Sensor::read()
     CMOSHalfCycles = 0;
     CMOSToggle = false; //not sure this should be the start state. 
 
-    spiSettings = SPISettings(ADC_CLK_SPEED, MSBFIRST, SPI_MODE0);
     CMOSTimer.begin(stepCMOS, 1000000. / (CMOS_CLK_SPEED / 2.));
 }
 
@@ -63,6 +68,7 @@ void Sensor::ADCReceive()
         SPI.endTransaction();
         detachInterrupt(EOS);
         digitalWrite(SS, !SELECTION_STATE);
+        CMOSTimer.end();
         dataState = true;
     }
     else
