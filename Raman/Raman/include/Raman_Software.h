@@ -9,6 +9,7 @@
 #include "RoveComm.h"
 //#include "S16514.h"
 #include "Smoco.h"
+#include "Sensor.h"
 
 //For TOF
 #include <Wire.h>
@@ -44,6 +45,7 @@ VL53L4CX* tofSensor = new VL53L4CX(&Wire, TOF_GPID);
 IntervalTimer Watchdog;
 uint8_t watchdogStatus = 0;
 uint8_t watchdogOverride = 0;
+
 
 void feedWatchdog();
 void estop();

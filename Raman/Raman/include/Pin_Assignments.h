@@ -37,5 +37,10 @@
 #define SERVO1 37
 #define SERVO2 38
 
-#endif
+//Conceptual Sensor Pins
+#define SS 3//idk this is super temporary
+#define SCLK ADC_CLK//Redundant dont worry about it
+#define MISO 12
+#define MOSI 11
 
+#endif

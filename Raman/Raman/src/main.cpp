@@ -3,7 +3,7 @@
 
 void setup()
 {
-  
+  //Serial setup, get rid of the while for normal opperation 
   Serial.begin(115200);
 
   while(!Serial);
@@ -36,7 +36,6 @@ void setup()
 
   //Initialize TOF
   Wire.begin();
-  
   Wire.setSCL(TOF_SCL);
   Wire.setSDA(TOF_SDA);
 
@@ -55,6 +54,7 @@ void setup()
 }
 
 void loop() {
+  //Process ping data
   receiveCAN();
 
   //Check for RoveComm Packets:
