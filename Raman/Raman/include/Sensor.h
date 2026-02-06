@@ -11,11 +11,11 @@ class Sensor
 public:
     Sensor();
 
-    static void stepCMOS();
+    static bool stepCMOS();
 
 private:
     static SPISettings spiSettings;
 
-    static IntervalTimer CMOSTimer; 
+    static IntervalTimer CMOSTimer;
     static bool CMOSToggle; 
 }
