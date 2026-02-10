@@ -47,7 +47,7 @@ void setup()
   tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
 
   //Smoco setup:
-  smoco.setLowPassSmoothingFactor(UINT16_MAX);                                                                                                                                                                                                                                                                                                                                                                                       
+  //smoco.setLowPassSmoothingFactor(UINT16_MAX);                                                                                                                                                                                                                                                                                                                                                                     
   smoco.setSoftLimitPosition(INT32_MIN, INT32_MAX);
   smoco.calibratePosition((INT16_MIN / 4), 0);
 }
@@ -90,7 +90,9 @@ void loop() {
     break;
   case RC_RAMANBOARD_LIMITSWITCHOVERRIDE_DATA_ID:
     uint8_t limitData = packet.i8data[0];
-    smoco.m_ignoreLimit = limitData;
+    bool forwardLimitOverride = limitData & 0x01;
+    bool reverseLimitOverride = (limitData & 0x02) >> 1;
+    smoco.configIgnoreLimits(forwardLimitOverride, reverseLimitOverride);
     break;
   }
   
@@ -140,13 +142,13 @@ void loop() {
 
     //SMOCO ping
     smoco.ping();
-    uint16_t smocoPingData = smoco.m_pingTime; 
+    uint16_t smocoPingData = smoco.getPingTime(); 
     roveComm.write(RC_RAMANBOARD_SMOCOPING_DATA_ID, 1, &smocoPingData);
     Serial.printf("Ping Data: %d\n", smocoPingData);
 
 
     //SMOCO limits
-    uint8_t limitData = (smoco.m_limitSwitchA) | (smoco.m_limitSwitchB ? (1 << 1) : 0);
+    uint8_t limitData = (smoco.getLimitSwitchA()) | (smoco.getLimitSwitchB() ? (1 << 1) : 0);
     roveComm.write(RC_ARMBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
 
     //Sensor Data
