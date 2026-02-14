@@ -1,10 +1,25 @@
 #include "Sensor.h"
 
 
+SPISettings Sensor::spiSettings;
+
+IntervalTimer Sensor::CMOSTimer;
+bool Sensor::CMOSToggle;
+uint8_t Sensor::CMOSHalfCycles;
+
+uint16_t* Sensor::adcData;
+uint16_t Sensor::adcDataCount;
+
+bool Sensor::dataState;
+
+
 Sensor::Sensor()
 {
-    adcData = new uint16_t[PIXEL_COUNT];
+    /*adcData = new uint16_t[PIXEL_COUNT];
     spiSettings = SPISettings(ADC_CLK_SPEED, MSBFIRST, SPI_MODE0);
+    */
+    dataState = false;
+    Serial.println("BAD");
 }
 
 

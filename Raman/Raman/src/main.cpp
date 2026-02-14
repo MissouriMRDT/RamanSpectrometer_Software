@@ -6,8 +6,6 @@ void setup()
   //Serial setup, get rid of the while for normal opperation 
   Serial.begin(115200);
 
-  while(!Serial);
-
   //Setup Outputs
   pinMode(FAN_OUT, OUTPUT);
   digitalWrite(FAN_OUT, LOW);
@@ -46,8 +44,7 @@ void setup()
   Serial.println(tofSensor->InitSensor(tofAddress));
   tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
 
-  //Smoco setup:
-  smoco.setLowPassSmoothingFactor(UINT16_MAX);                                                                                                                                                                                                                                                                                                                                                                                       
+  //Smoco setup:                                                                                                                                                                                                                                                                                                                                                                                
   smoco.setSoftLimitPosition(INT32_MIN, INT32_MAX);
   smoco.calibratePosition((INT16_MIN / 4), 0);
 }
@@ -67,7 +64,6 @@ void loop() {
     
     digitalWrite(FAN_OUT, packet.i8data[0]);
     digitalWrite(LASER_OUT, packet.i8data[0]);
-    Serial.println("LASER");
     break;
   //Read Raman Data
   case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
@@ -82,15 +78,12 @@ void loop() {
     break;
   case RC_RAMANBOARD_WATCHDOGOVERRIDE_DATA_ID:
     watchdogOverride = packet.i8data[0];
-
-
     break;
   case RC_RAMANBOARD_CALIBRATEENCODER_DATA_ID:
     smoco.calibratePosition(INT16_MIN / 4, 0);
     break;
   case RC_RAMANBOARD_LIMITSWITCHOVERRIDE_DATA_ID:
     uint8_t limitData = packet.i8data[0];
-    smoco.m_ignoreLimit = limitData;
     break;
   }
   
@@ -117,22 +110,22 @@ void loop() {
   {
     //Tof Telementary Data Retrieval
     VL53L4CX_MultiRangingData_t multiRangingData;
-    float tofDis = FLT_MAX;
 
-    tofSensor->VL53L4CX_GetMultiRangingData(&multiRangingData);
-
-    tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
-
-    float tofData[2] = {0.f, (float)(multiRangingData.RangeData[0].RangeMilliMeter - tofCallibrationOffset)};
-    Serial.printf("Tof Data: %dmm\n", multiRangingData.RangeData[0].RangeMilliMeter - tofCallibrationOffset);
-    if (callibrationState)
+    if (!tofFailed)
     {
-      Serial.println("hello");
-      tofCallibrationOffset = multiRangingData.RangeData[0].RangeMilliMeter;
-      callibrationState = false;
-    }
+      tofSensor->VL53L4CX_GetMultiRangingData(&multiRangingData);
 
-    roveComm.write(RC_RAMANBOARD_POSITION_DATA_ID, 2, tofData);
+      tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
+
+      float tofData[2] = {0.f, (float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset)};
+      if (callibrationState)
+      {
+        tofCallibrationOffset = tofData[1];
+        callibrationState = false;
+      }
+
+      roveComm.write(RC_RAMANBOARD_POSITION_DATA_ID, 2, tofData);
+    }
 
     //Limit switches 
     uint8_t limitSwitchData[2] = {digitalRead(LIMIT_SW1), digitalRead(LIMIT_SW2)};
@@ -140,13 +133,11 @@ void loop() {
 
     //SMOCO ping
     smoco.ping();
-    uint16_t smocoPingData = smoco.m_pingTime; 
+    uint16_t smocoPingData = smoco.getPingTime(); 
     roveComm.write(RC_RAMANBOARD_SMOCOPING_DATA_ID, 1, &smocoPingData);
-    Serial.printf("Ping Data: %d\n", smocoPingData);
-
 
     //SMOCO limits
-    uint8_t limitData = (smoco.m_limitSwitchA) | (smoco.m_limitSwitchB ? (1 << 1) : 0);
+    uint8_t limitData = (smoco.getLimitSwitchA()) | (smoco.getLimitSwitchB() ? (1 << 1) : 0);
     roveComm.write(RC_ARMBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
 
     //Sensor Data
@@ -160,7 +151,6 @@ void loop() {
 
       waitForADC = false;
     }
-   
     telemetryCounter = millis();
   }
 }
@@ -201,6 +191,7 @@ byte identifyTofAddress()
       if (address<16) 
         Serial.print("0");
       Serial.println(address,HEX);
+      tofFailed = false;
       return address;
       nDevices++;
     }
@@ -212,7 +203,10 @@ byte identifyTofAddress()
     }    
   }
   if (nDevices == 0)
+  {
+    tofFailed = true;
     Serial.println("No I2C devices found\n");
+  }
   else
     Serial.println("done\n");
 
@@ -228,5 +222,4 @@ void receiveCAN()
     ATAN_T4_CAN.receive(msg);
     smoco.sync(msg);
   }
-
 } 

@@ -25,7 +25,7 @@ RoveCommPacket packet;
 #define ATAN_T4_CAN ACAN_T4::can1
 
 ACAN_T4_Settings acanSettings(125 * 1000);
-Smoco smoco(&ATAN_T4_CAN, 0x8);
+Smoco smoco(&ATAN_T4_CAN, 0x9);
 int16_t instrumentGantrySpeed = 0;
 
 //Telemetry
@@ -36,6 +36,7 @@ uint16_t tofCallibrationOffset = 0;
 bool callibrationState = false;
 byte identifyTofAddress();
 VL53L4CX* tofSensor = new VL53L4CX(&Wire, TOF_GPID);
+bool tofFailed = false; 
 
 
 // Watchdog
