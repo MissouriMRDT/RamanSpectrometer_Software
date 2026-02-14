@@ -134,9 +134,11 @@ void loop() {
     //SMOCO ping
     smoco.ping();
     uint16_t smocoPingData = smoco.getPingTime(); 
+    uint16_t smocoPingData = smoco.getPingTime(); 
     roveComm.write(RC_RAMANBOARD_SMOCOPING_DATA_ID, 1, &smocoPingData);
 
     //SMOCO limits
+    uint8_t limitData = (smoco.getLimitSwitchA()) | (smoco.getLimitSwitchB() ? (1 << 1) : 0);
     uint8_t limitData = (smoco.getLimitSwitchA()) | (smoco.getLimitSwitchB() ? (1 << 1) : 0);
     roveComm.write(RC_ARMBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
 
