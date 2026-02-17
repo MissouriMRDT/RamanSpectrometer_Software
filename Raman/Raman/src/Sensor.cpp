@@ -4,28 +4,25 @@
 SPISettings Sensor::spiSettings;
 
 IntervalTimer Sensor::CMOSTimer;
-bool Sensor::CMOSToggle;
-uint8_t Sensor::CMOSHalfCycles;
+volatile bool Sensor::CMOSToggle;
+volatile uint8_t Sensor::CMOSHalfCycles;
 
-uint16_t* Sensor::adcData;
-uint16_t Sensor::adcDataCount;
+volatile uint16_t Sensor::adcDataCount;
 
-bool Sensor::dataState;
+volatile bool Sensor::dataState;
+
+uint16_t Sensor::adcData[];
 
 
 Sensor::Sensor()
 {
-    /*adcData = new uint16_t[PIXEL_COUNT];
     spiSettings = SPISettings(ADC_CLK_SPEED, MSBFIRST, SPI_MODE0);
-    */
     dataState = false;
-    Serial.println("BAD");
 }
 
 
 Sensor::~Sensor()
 {
-    delete adcData; 
 }
 
 
@@ -42,7 +39,7 @@ void Sensor::read()
     dataState = false;
 
     CMOSHalfCycles = 0;
-    CMOSToggle = false; //not sure this should be the start state. 
+    CMOSToggle = false;
 
     CMOSTimer.begin(stepCMOS, 1000000. / (CMOS_CLK_SPEED / 2.));
 }

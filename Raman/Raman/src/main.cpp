@@ -37,7 +37,6 @@ void setup()
   Wire.setSDA(TOF_SDA);
 
   auto tofAddress = identifyTofAddress();
-  delay(500);
 
   tofSensor->begin();
   tofSensor->VL53L4CX_Off();
@@ -102,9 +101,9 @@ void loop() {
   else
     smoco.driveOpenLoop(instrumentGantrySpeed);
 
-  //If both buttons are down then assume TOF callibration state
+  //If both buttons are down then assume TOF calibration state
   if (!digitalRead(CAN_SW1) && !digitalRead(CAN_SW2))
-    callibrationState = true;
+    calibrationState = true;
 
   if (millis() - telemetryCounter > 500)
   {
@@ -118,10 +117,10 @@ void loop() {
       tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
 
       float tofData[2] = {0.f, (float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset)};
-      if (callibrationState)
+      if (calibrationState)
       {
         tofCallibrationOffset = tofData[1];
-        callibrationState = false;
+        calibrationState = false;
       }
 
       roveComm.write(RC_RAMANBOARD_POSITION_DATA_ID, 2, tofData);
@@ -134,12 +133,11 @@ void loop() {
     //SMOCO ping
     smoco.ping();
     uint16_t smocoPingData = smoco.getPingTime(); 
-    uint16_t smocoPingData = smoco.getPingTime(); 
     roveComm.write(RC_RAMANBOARD_SMOCOPING_DATA_ID, 1, &smocoPingData);
 
     //SMOCO limits
     uint8_t limitData = (smoco.getLimitSwitchA()) | (smoco.getLimitSwitchB() ? (1 << 1) : 0);
-    uint8_t limitData = (smoco.getLimitSwitchA()) | (smoco.getLimitSwitchB() ? (1 << 1) : 0);
+
     roveComm.write(RC_ARMBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
 
     //Sensor Data
@@ -179,13 +177,10 @@ byte identifyTofAddress()
   Serial.println("Scanning...");
 
   nDevices = 0;
+  //check for a valid I2C connection at every adress. 
   for(address = 1; address < 127; address++ ) {
-    // The Wire.beginTransmission function sends an I2C start condition and the
-    // device address. An address of 0 is a General Call address.
     Wire.beginTransmission(address);
     
-    // The endTransmission function sends an I2C stop condition and releases the bus.
-    // It also returns an error code (0 for success)
     error = Wire.endTransmission();
 
     if (error == 0) {

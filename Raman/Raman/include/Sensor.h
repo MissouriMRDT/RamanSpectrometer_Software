@@ -35,11 +35,12 @@ private:
     static SPISettings spiSettings;
 
     static IntervalTimer CMOSTimer;
-    static bool CMOSToggle; 
-    static uint8_t CMOSHalfCycles;
+    //Volatile because i dont want read() call to mess up anything once it enters interupt or timer.
+    static volatile bool CMOSToggle; 
+    static volatile uint8_t CMOSHalfCycles;
     
-    static uint16_t *adcData;
-    static uint16_t adcDataCount;
+    static uint16_t adcData[PIXEL_COUNT];
+    static volatile uint16_t adcDataCount;
 
-    static bool dataState;
+    static volatile bool dataState;
 }; 

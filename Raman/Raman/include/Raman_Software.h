@@ -33,7 +33,7 @@ float telemetryCounter;
 
 //TOF
 uint16_t tofCallibrationOffset = 0;
-bool callibrationState = false;
+bool calibrationState = false;
 byte identifyTofAddress();
 VL53L4CX* tofSensor = new VL53L4CX(&Wire, TOF_GPID);
 bool tofFailed = false; 
