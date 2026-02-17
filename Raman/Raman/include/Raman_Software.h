@@ -25,7 +25,7 @@ RoveCommPacket packet;
 #define ATAN_T4_CAN ACAN_T4::can1
 
 ACAN_T4_Settings acanSettings(125 * 1000);
-Smoco smoco(&ATAN_T4_CAN, 0x9);
+Smoco smoco(&ATAN_T4_CAN, 0x09);
 int16_t instrumentGantrySpeed = 0;
 
 //Telemetry

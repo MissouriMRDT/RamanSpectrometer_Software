@@ -1,5 +1,8 @@
 #include "Raman_Software.h"
+#include "RamanData.h"
 
+
+  float dataMax = 0;
 
 void setup()
 {
@@ -46,11 +49,19 @@ void setup()
   //Smoco setup:                                                                                                                                                                                                                                                                                                                                                                                
   smoco.setSoftLimitPosition(INT32_MIN, INT32_MAX);
   smoco.calibratePosition((INT16_MIN / 4), 0);
+  smoco.setRampRate(200);
+
+
+  for(float datum : fakeData)
+  {
+    if (datum > dataMax)
+      dataMax = datum;
+  }
 }
 
 void loop() {
   //Process ping data
-  receiveCAN();
+  //receiveCAN();
 
   //Check for RoveComm Packets:
   roveComm.read(packet); 
@@ -66,8 +77,21 @@ void loop() {
     break;
   //Read Raman Data
   case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
-    cmosSensor.read();
-    waitForADC = true;
+    uint16_t temp[2048];  
+    for (int i = 0; i < 2048; i++)
+    {
+        temp[i] = fakeData[(int)(i * (2478.0 / 2048.0))] / dataMax * 1023;
+    }
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512, &temp[0]);
+    delay(100);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &temp[512]);
+    delay(100);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &temp[1024]);
+    delay(100);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &temp[1536]);
+    delay(100);
+    
+    //waitForADC = true;
     break;
 
   case RC_RAMANBOARD_INSTRUMENTSAXIS_DATA_ID:
@@ -90,12 +114,14 @@ void loop() {
   //Gantry Button Inputs
   if (!digitalRead(CAN_SW1) && digitalRead(CAN_SW2))
   {
-    smoco.driveOpenLoop(INT16_MAX/4);
+    smoco.driveOpenLoop(INT16_MAX/2);
+    Serial.println("Driving Forward");
     feedWatchdog();
   }
   else if (digitalRead(CAN_SW1) && !digitalRead(CAN_SW2))
   {
-    smoco.driveOpenLoop(INT16_MIN/4);
+    smoco.driveOpenLoop(INT16_MIN/2);
+    Serial.println("Driving Backward");
     feedWatchdog();
   }
   else
@@ -127,8 +153,8 @@ void loop() {
     }
 
     //Limit switches 
-    uint8_t limitSwitchData[2] = {digitalRead(LIMIT_SW1), digitalRead(LIMIT_SW2)};
-    roveComm.write(RC_RAMANBOARD_LIMITSWITCH_DATA_ID, 2, limitSwitchData);
+    //uint8_t limitSwitchData[2] = {digitalRead(LIMIT_SW1), digitalRead(LIMIT_SW2)};
+    //roveComm.write(RC_RAMANBOARD_LIMITSWITCH_DATA_ID, 2, limitSwitchData);
 
     //SMOCO ping
     smoco.ping();
@@ -137,8 +163,7 @@ void loop() {
 
     //SMOCO limits
     uint8_t limitData = (smoco.getLimitSwitchA()) | (smoco.getLimitSwitchB() ? (1 << 1) : 0);
-
-    roveComm.write(RC_ARMBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
+    roveComm.write(RC_RAMANBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
 
     //Sensor Data
     adcDataP = cmosSensor.getData();
@@ -159,7 +184,7 @@ void loop() {
 void estop() {
     if (!watchdogOverride) {
       instrumentGantrySpeed = 0;
-      Serial.println("WATCHDOG");
+      Serial.printf("%d: WATCHDOG\n", millis());
     }
 }
 
