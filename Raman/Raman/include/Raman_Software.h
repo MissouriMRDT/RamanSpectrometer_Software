@@ -31,6 +31,8 @@ int16_t instrumentGantrySpeed = 0;
 //Telemetry
 float telemetryCounter;
 
+const float INCHES_PER_STEP = 1.0f;
+
 //TOF
 uint16_t tofCallibrationOffset = 0;
 bool calibrationState = false;

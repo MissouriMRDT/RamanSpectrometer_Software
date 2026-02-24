@@ -41,6 +41,8 @@ void Sensor::read()
     CMOSHalfCycles = 0;
     CMOSToggle = false;
 
+    cli();
+
     CMOSTimer.begin(stepCMOS, 1000000. / (CMOS_CLK_SPEED / 2.));
 }
 

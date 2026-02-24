@@ -1,8 +1,9 @@
 #include "Raman_Software.h"
 #include "RamanData.h"
 
+float dataMax = 0;
 
-  float dataMax = 0;
+void calibrateSMOCO();
 
 void setup()
 {
@@ -46,9 +47,10 @@ void setup()
   Serial.println(tofSensor->InitSensor(tofAddress));
   tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
 
-  //Smoco setup:                                                                                                                                                                                                                                                                                                                                                                                
-  smoco.setSoftLimitPosition(INT32_MIN, INT32_MAX);
-  smoco.calibratePosition((INT16_MIN / 4), 0);
+  //Smoco setup:                                                                                                                                                                                                                                                                                                                                             
+  calibrateSMOCO();
+  smoco.setSoftLimitPosition(0, INT32_MAX);
+  //smoco.calibratePosition((INT16_MIN / 4), 0);
   smoco.setRampRate(200);
 
 
@@ -107,6 +109,7 @@ void loop() {
     break;
   case RC_RAMANBOARD_LIMITSWITCHOVERRIDE_DATA_ID:
     uint8_t limitData = packet.i8data[0];
+    smoco.configIgnoreLimits(limitData & 1, limitData & 2);
     break;
   }
   
@@ -142,14 +145,14 @@ void loop() {
 
       tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
 
-      float tofData[2] = {0.f, (float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset)};
+      float positionData[2] = {smoco.getPosition() * INCHES_PER_STEP, (float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset)};
       if (calibrationState)
       {
-        tofCallibrationOffset = tofData[1];
+        tofCallibrationOffset = positionData[1];
         calibrationState = false;
       }
 
-      roveComm.write(RC_RAMANBOARD_POSITION_DATA_ID, 2, tofData);
+      roveComm.write(RC_RAMANBOARD_POSITION_DATA_ID, RC_RAMANBOARD_POSITION_DATA_COUNT, positionData);
     }
 
     //Limit switches 
@@ -169,6 +172,7 @@ void loop() {
     adcDataP = cmosSensor.getData();
     if (waitForADC == true && adcDataP != nullptr)
     {
+      sei();
       roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512, &adcDataP[0]);
       roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
       roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
@@ -191,6 +195,17 @@ void estop() {
 
 void feedWatchdog() {
     Watchdog.begin(estop, WATCHDOG_TIMEOUT);
+}
+
+
+void calibrateSMOCO()
+{
+  while (!smoco.getLimitSwitchA())
+  {
+    smoco.driveOpenLoop(1000);
+  }
+  smoco.driveOpenLoop(0);
+  smoco.calibratePosition(INT16_MIN / 4, 0);
 }
 
 
