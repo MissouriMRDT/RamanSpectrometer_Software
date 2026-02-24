@@ -82,7 +82,8 @@ void loop() {
     uint16_t temp[2048];  
     for (int i = 0; i < 2048; i++)
     {
-        temp[i] = fakeData[(int)(i * (2478.0 / 2048.0))] / dataMax * 1023;
+        randomSeed(analogRead(0));
+        temp[i] = (fakeData[(int)(i * (2478.0 / 2048.0))] / dataMax * 1023) + ((random(0,2) ? 1 : -1) * random(0, 20));
     }
     roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512, &temp[0]);
     delay(100);
