@@ -13,10 +13,10 @@ Run CMOS at 900KHz to allow for sufficient conversion and pixel input time.
 Run ADC at 100MHZ? as long as the data would be able to transfer within 1us
 */
 
-#define ADC_CLK_SPEED 100000000
-#define CMOS_CLK_SPEED 900000
+#define ADC_CLK_SPEED 50000000
+#define CMOS_CLK_SPEED 100000 //900000 / 2
 #define SELECTION_STATE HIGH //im doing this because the SPI documentation says LOW, but the ADC documentation says HIGH
-#define START_CYCLE 1//May need to change this, not totally sure
+#define START_CYCLE 100//May need to change this, not totally sure
 #define PIXEL_COUNT 2048
 #define TRIG_OVER 89
 

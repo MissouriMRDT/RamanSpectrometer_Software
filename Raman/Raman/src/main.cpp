@@ -5,8 +5,23 @@ float dataMax = 0;
 
 void calibrateSMOCO();
 
+//TESTING TESTING TESTING
+SPISettings spiSettings(70'000'000, MSBFIRST, SPI_MODE0);
+void ADCTest();
+
 void setup()
 {
+  pinMode(ST, OUTPUT);
+  digitalWrite(ST, HIGH);
+  //ADC testing stuff
+  pinMode(A10, OUTPUT);
+  pinMode(A11, OUTPUT);
+  pinMode(33, OUTPUT);//CVNST
+
+  digitalWrite(33, HIGH);
+  digitalWrite(A10, HIGH);
+
+
   //Serial setup, get rid of the while for normal opperation 
   Serial.begin(115200);
 
@@ -48,10 +63,11 @@ void setup()
   tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
 
   //Smoco setup:                                                                                                                                                                                                                                                                                                                                             
-  calibrateSMOCO();
-  smoco.setSoftLimitPosition(0, INT32_MAX);
-  //smoco.calibratePosition((INT16_MIN / 4), 0);
+  //calibrateSMOCO();
+  smoco.setSoftLimitPosition(INT32_MIN, INT32_MAX);
   smoco.setRampRate(200);
+  //smoco.calibratePosition((INT16_MIN / 4), 0);
+
 
 
   for(float datum : fakeData)
@@ -59,10 +75,15 @@ void setup()
     if (datum > dataMax)
       dataMax = datum;
   }
+
+  //Serial.print("ADC...\n");
+  //delay(500);
+  //cmosSensor.read();
+
 }
 
 void loop() {
-  //Process ping data
+  //Process ping data                                                                         
   //receiveCAN();
 
   //Check for RoveComm Packets:
@@ -85,16 +106,18 @@ void loop() {
         randomSeed(analogRead(0));
         temp[i] = (fakeData[(int)(i * (2478.0 / 2048.0))] / dataMax * 1023) + ((random(0,2) ? 1 : -1) * random(0, 20));
     }
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512, &temp[0]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 100, &temp[0]);
     delay(100);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &temp[512]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 400, &temp[512]);
     delay(100);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &temp[1024]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 400, &temp[1024]);
     delay(100);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &temp[1536]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 400, &temp[1536]);
     delay(100);
+    Serial.print("written");
     
-    //waitForADC = true;
+    cmosSensor.read();
+    waitForADC = true;
     break;
 
   case RC_RAMANBOARD_INSTRUMENTSAXIS_DATA_ID:
@@ -118,7 +141,7 @@ void loop() {
   //Gantry Button Inputs
   if (!digitalRead(CAN_SW1) && digitalRead(CAN_SW2))
   {
-    smoco.driveOpenLoop(INT16_MAX/2);
+    smoco.driveOpenLoop(INT16_MAX/2);                                                                                                                                                                                                                                                                                                                                                                                                                                                 
     Serial.println("Driving Forward");
     feedWatchdog();
   }
@@ -169,15 +192,26 @@ void loop() {
     uint8_t limitData = (smoco.getLimitSwitchA()) | (smoco.getLimitSwitchB() ? (1 << 1) : 0);
     roveComm.write(RC_RAMANBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
 
+    //uint16_t* test = new uint16_t[512];
+    //for (int i = 0; i < 512; i++)
+    //test[i] = i;
+    //roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 400, test);
+    //delay(2000);
+
     //Sensor Data
     adcDataP = cmosSensor.getData();
     if (waitForADC == true && adcDataP != nullptr)
     {
-      sei();
-      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512, &adcDataP[0]);
+      //sei();
+      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
+      delay(500);
       roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
+      delay(500);
       roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
+      delay(500);
       roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
+      
+      Serial.println("Sending...");
 
       waitForADC = false;
     }
@@ -261,3 +295,27 @@ void receiveCAN()
     smoco.sync(msg);
   }
 } 
+
+
+
+void ADCTest()
+{
+  SPI.begin();
+  SPI.beginTransaction(spiSettings);
+  delay(500);
+
+  Serial.println("Staring ADC");
+
+  digitalWriteFast(33, LOW);//CVNST low
+
+  uint16_t results = SPI.transfer16(0);
+  results = results << 1;
+  //results = results & 0b11111111111111;
+  
+  delay(100);
+  Serial.printf("ADC Results: %f | ", ((float)results/UINT16_MAX) * 5.);
+  Serial.println(results, BIN);
+  SPI.endTransaction();
+  SPI.end();
+  digitalWrite(33, HIGH);
+}
