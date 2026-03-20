@@ -11,8 +11,10 @@ void ADCTest();
 
 void setup()
 {
+  pinMode(40, OUTPUT);
+  digitalWrite(40, HIGH);
   pinMode(ST, OUTPUT);
-  digitalWrite(ST, HIGH);
+  digitalWrite(ST, LOW);
   //ADC testing stuff
   pinMode(A10, OUTPUT);
   pinMode(A11, OUTPUT);
@@ -100,22 +102,7 @@ void loop() {
     break;
   //Read Raman Data
   case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
-    uint16_t temp[2048];  
-    for (int i = 0; i < 2048; i++)
-    {
-        randomSeed(analogRead(0));
-        temp[i] = (fakeData[(int)(i * (2478.0 / 2048.0))] / dataMax * 1023) + ((random(0,2) ? 1 : -1) * random(0, 20));
-    }
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 100, &temp[0]);
-    delay(100);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 400, &temp[512]);
-    delay(100);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 400, &temp[1024]);
-    delay(100);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 400, &temp[1536]);
-    delay(100);
-    Serial.print("written");
-    
+    cmosSensor.setStartCycles(packet.i32data[0]);
     cmosSensor.read();
     waitForADC = true;
     break;

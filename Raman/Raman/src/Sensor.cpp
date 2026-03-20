@@ -5,7 +5,8 @@ SPISettings Sensor::spiSettings;
 
 IntervalTimer Sensor::CMOSTimer;
 volatile bool Sensor::CMOSToggle;
-volatile uint8_t Sensor::CMOSHalfCycles;
+volatile uint16_t Sensor::CMOSHalfCycles;
+volatile uint16_t Sensor::CMOSTStartCycles;
 
 volatile uint16_t Sensor::adcDataCount;
 
@@ -35,6 +36,7 @@ void Sensor::read()
     /*pinMode(33, OUTPUT);
     digitalWrite(33, HIGH);*/
     pinMode(SS, OUTPUT);
+    pinMode(TRIG_OUT, OUTPUT);
     pinMode(CMOS_CLK, OUTPUT);
     pinMode(ST, OUTPUT);
     digitalWrite(ST, HIGH);
@@ -61,18 +63,15 @@ void Sensor::read()
 
 void Sensor::stepCMOS()
 {
-    if (CMOSHalfCycles == 0)
-    {
-       
-    }
     CMOSToggle = !CMOSToggle; 
 
     digitalWriteFast(CMOS_CLK, CMOSToggle ? HIGH : LOW);
-    
+    //Serial.printf("%d\n", CMOSHalfCycles);
     //Start-time Done
-    if (CMOSHalfCycles == START_CYCLE)
+    if (CMOSHalfCycles == CMOSTStartCycles)
     {
         Serial.println("CMOSSTARTDONE");
+        //delay(500);
         digitalWriteFast(ST, LOW);
         //Begin the SPI stuff here because it needs to feed SCLK
         
@@ -85,7 +84,7 @@ void Sensor::stepCMOS()
         SPI.usingInterrupt(EOS);
     } 
 
-    if (CMOSHalfCycles <= START_CYCLE)
+    if (CMOSHalfCycles <= CMOSTStartCycles)
         CMOSHalfCycles++;
 
     /*static int testNum = 0;
@@ -105,14 +104,24 @@ void Sensor::ADCReceive()
     //This accounts for the CMOS's integration time which is TRIG_OVER trig cycles after ST pulled low
     if (adcDataCount > TRIG_OVER)
     {
+        int accumulates = 16;
+        for (int i = 0; i < accumulates; i++)
+        {
+            digitalWriteFast(TRIG_OUT, HIGH);
+            delayMicroseconds(1);
+            digitalWriteFast(TRIG_OUT, LOW);
+            if (i != accumulates - 1)
+                delayMicroseconds(1);
+        }
         //ADC outputs 14 bits so shift it left 2 so that its scaled correctly
         adcData[adcDataCount] = (SPI.transfer16(0) >> 2);
+        digitalWriteFast(TRIG_OUT, HIGH);
         //Serial.println(adcData[adcDataCount]);
 
         //Check for final pixel. if end deinitialize sensor systems
         if (adcDataCount == PIXEL_COUNT + TRIG_OVER) // + TRIG_OVER because we are PIXEL_COUNT after the integration time
         {
-            Serial.println("CMOS DONE");
+            //Serial.println("CMOS DONE");
             SPI.endTransaction();
             detachInterrupt(EOS);
             digitalWrite(ST, LOW);
@@ -133,4 +142,11 @@ uint16_t* Sensor::getData()
         return adcData;
     else
         return nullptr;
+}
+
+
+void Sensor::setStartCycles(int msec)
+{
+    CMOSTStartCycles = msec / (1000. / (CMOS_CLK_SPEED * 2));
+    Serial.println(CMOSTStartCycles);
 }

@@ -7,6 +7,7 @@
 #define EOS 20
 #define ST 6
 #define LIGHT_IN 0
+#define TRIG_OUT 41
 
 //Fan
 #define FAN_OUT 9

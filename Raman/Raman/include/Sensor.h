@@ -14,9 +14,8 @@ Run ADC at 100MHZ? as long as the data would be able to transfer within 1us
 */
 
 #define ADC_CLK_SPEED 50000000
-#define CMOS_CLK_SPEED 100000 //900000 / 2
+#define CMOS_CLK_SPEED 10000 //900000 / 2
 #define SELECTION_STATE HIGH //im doing this because the SPI documentation says LOW, but the ADC documentation says HIGH
-#define START_CYCLE 100//May need to change this, not totally sure
 #define PIXEL_COUNT 2048
 #define TRIG_OVER 89
 
@@ -28,6 +27,7 @@ public:
 
     void read();
     uint16_t* getData();
+    void setStartCycles(int);
 private:
     static void stepCMOS();
     static void ADCReceive();
@@ -37,7 +37,8 @@ private:
     static IntervalTimer CMOSTimer;
     //Volatile because i dont want read() call to mess up anything once it enters interupt or timer.
     static volatile bool CMOSToggle; 
-    static volatile uint8_t CMOSHalfCycles;
+    static volatile uint16_t CMOSHalfCycles;
+    static volatile uint16_t CMOSTStartCycles;
     
     static uint16_t adcData[PIXEL_COUNT];
     static volatile uint16_t adcDataCount;
