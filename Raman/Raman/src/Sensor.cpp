@@ -147,6 +147,9 @@ uint16_t* Sensor::getData()
 
 void Sensor::setStartCycles(int msec)
 {
+    if (msec < 100)
+        msec = 100;
+        
     CMOSTStartCycles = msec / (1000. / (CMOS_CLK_SPEED * 2));
     Serial.println(CMOSTStartCycles);
 }
