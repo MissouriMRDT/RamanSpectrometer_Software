@@ -5,10 +5,10 @@ SPISettings Sensor::spiSettings;
 
 IntervalTimer Sensor::CMOSTimer;
 volatile bool Sensor::CMOSToggle;
-volatile uint16_t Sensor::CMOSHalfCycles;
-volatile uint16_t Sensor::CMOSTStartCycles;
+volatile uint32_t Sensor::CMOSHalfCycles;
+volatile uint32_t Sensor::CMOSTStartCycles;
 
-volatile uint16_t Sensor::adcDataCount;
+volatile uint32_t Sensor::adcDataCount;
 
 volatile bool Sensor::dataState;
 

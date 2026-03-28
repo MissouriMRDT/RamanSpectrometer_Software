@@ -37,11 +37,11 @@ private:
     static IntervalTimer CMOSTimer;
     //Volatile because i dont want read() call to mess up anything once it enters interupt or timer.
     static volatile bool CMOSToggle; 
-    static volatile uint16_t CMOSHalfCycles;
-    static volatile uint16_t CMOSTStartCycles;
+    static volatile uint32_t CMOSHalfCycles;
+    static volatile uint32_t CMOSTStartCycles;
     
     static uint16_t adcData[PIXEL_COUNT];
-    static volatile uint16_t adcDataCount;
+    static volatile uint32_t adcDataCount;
 
     static volatile bool dataState;
 }; 
