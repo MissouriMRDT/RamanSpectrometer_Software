@@ -7,6 +7,7 @@ IntervalTimer Sensor::CMOSTimer;
 volatile bool Sensor::CMOSToggle;
 volatile uint32_t Sensor::CMOSHalfCycles;
 volatile uint32_t Sensor::CMOSTStartCycles;
+volatile uint32_t Sensor::shutDownCount;
 
 volatile uint32_t Sensor::adcDataCount;
 
@@ -43,7 +44,7 @@ void Sensor::read()
     spiSettings = SPISettings(ADC_CLK_SPEED, MSBFIRST, SPI_MODE0);
     SPI.begin();
     
-
+    shutDownCount = 0;
     adcDataCount = 0;
 
     dataState = false;
@@ -83,6 +84,20 @@ void Sensor::stepCMOS()
         attachInterrupt(EOS, ADCReceive, FALLING);//MAKE SURE TO DETACH
         SPI.usingInterrupt(EOS);
     } 
+    else if (CMOSHalfCycles >= CMOSTStartCycles && shutDownCount != 1000)
+    {
+        shutDownCount++;
+    }
+    else if (shutDownCount == 1000)
+    {
+        SPI.endTransaction();
+        detachInterrupt(EOS);
+        digitalWrite(ST, LOW);
+        digitalWrite(SS, !SELECTION_STATE);
+        CMOSTimer.end();
+        dataState = true;
+    }
+
 
     if (CMOSHalfCycles <= CMOSTStartCycles)
         CMOSHalfCycles++;

@@ -39,6 +39,7 @@ private:
     static volatile bool CMOSToggle; 
     static volatile uint32_t CMOSHalfCycles;
     static volatile uint32_t CMOSTStartCycles;
+    static volatile uint32_t shutDownCount;
     
     static uint16_t adcData[PIXEL_COUNT];
     static volatile uint32_t adcDataCount;
