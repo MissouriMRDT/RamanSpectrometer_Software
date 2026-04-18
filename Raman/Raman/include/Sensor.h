@@ -1,6 +1,7 @@
 #include <SPI.h>
 #include <Arduino.h>
 #include "Pin_Assignments.h"
+#include "SPIBetter.h"
 
 /*
 CMOS reading info:
@@ -25,7 +26,7 @@ public:
     Sensor();
     ~Sensor();
 
-    void read();
+    void read(bool);
     uint16_t* getData();
     void setStartCycles(int);
 private:
@@ -45,4 +46,5 @@ private:
     static volatile uint32_t adcDataCount;
 
     static volatile bool dataState;
+    static volatile bool errorSwitch;
 }; 

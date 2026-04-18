@@ -11,6 +11,9 @@ void ADCTest();
 
 void setup()
 {
+  
+  pinMode(24, OUTPUT);
+  digitalWrite(24, HIGH);
   pinMode(40, OUTPUT);
   digitalWrite(40, HIGH);
   pinMode(ST, OUTPUT);
@@ -58,6 +61,7 @@ void setup()
   Wire.setSDA(TOF_SDA);
 
   auto tofAddress = identifyTofAddress();
+  tofSensor->setXShutPin(17);
 
   tofSensor->begin();
   tofSensor->VL53L4CX_Off();
@@ -103,7 +107,9 @@ void loop() {
   //Read Raman Data
   case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
     cmosSensor.setStartCycles(packet.i32data[0]);
-    cmosSensor.read();
+    static bool eSwitch = false;
+    cmosSensor.read(eSwitch);
+    eSwitch = !eSwitch;
     waitForADC = true;
     break;
 
@@ -153,7 +159,7 @@ void loop() {
     if (!tofFailed)
     {
       tofSensor->VL53L4CX_GetMultiRangingData(&multiRangingData);
-
+      Serial.println((float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset));
       tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
 
       float positionData[2] = {smoco.getPosition() * INCHES_PER_STEP, (float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset)};
@@ -175,6 +181,7 @@ void loop() {
     uint16_t smocoPingData = smoco.getPingTime(); 
     roveComm.write(RC_RAMANBOARD_SMOCOPING_DATA_ID, 1, &smocoPingData);
 
+
     //SMOCO limits
     uint8_t limitData = (smoco.getLimitSwitchA()) | (smoco.getLimitSwitchB() ? (1 << 1) : 0);
     roveComm.write(RC_RAMANBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
@@ -191,11 +198,8 @@ void loop() {
     {
       //sei();
       roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
-      delay(500);
       roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
-      delay(500);
       roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
-      delay(500);
       roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
       
       Serial.println("Sending...");
