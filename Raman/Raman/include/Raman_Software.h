@@ -51,6 +51,8 @@ uint8_t watchdogOverride = 0;
 Sensor cmosSensor;
 uint16_t* adcDataP;
 bool waitForADC = false;
+uint32_t integrationCycles = 1;
+uint32_t integrationCount = 0;
 
 void feedWatchdog();
 void estop();

@@ -29,6 +29,7 @@ public:
     void read(bool);
     uint16_t* getData();
     void setStartCycles(int);
+    static void clearData();
 private:
     static void stepCMOS();
     static void ADCReceive();
@@ -41,6 +42,7 @@ private:
     static volatile uint32_t CMOSHalfCycles;
     static volatile uint32_t CMOSTStartCycles;
     static volatile uint32_t shutDownCount;
+    static volatile uint32_t integrationCount;
     
     static uint16_t adcData[PIXEL_COUNT];
     static volatile uint32_t adcDataCount;

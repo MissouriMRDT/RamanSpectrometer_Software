@@ -107,6 +107,9 @@ void loop() {
   //Read Raman Data
   case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
     cmosSensor.setStartCycles(packet.i32data[0]);
+    integrationCycles = ceil(((packet.i32data[0] < 100 ? 100 : packet.i32data[0])) / 100.);
+    Serial.print("aaaaa: ");
+    Serial.println(integrationCycles);
     static bool eSwitch = false;
     cmosSensor.read(eSwitch);
     eSwitch = !eSwitch;
@@ -196,15 +199,28 @@ void loop() {
     adcDataP = cmosSensor.getData();
     if (waitForADC == true && adcDataP != nullptr)
     {
-      //sei();
-      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
-      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
-      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
-      roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
-      
-      Serial.println("Sending...");
+      if (integrationCount < integrationCycles - 1)
+      {
+        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
+        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
+        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
+        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
+        cmosSensor.read(false);
+        integrationCount++;
+      }
+      else
+      {
+        integrationCount = 0;
+        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
+        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
+        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
+        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
+        cmosSensor.clearData();
+        Serial.println("Sending...");
 
-      waitForADC = false;
+        waitForADC = false;
+      }
+      //sei();
     }
     telemetryCounter = millis();
   }

@@ -8,6 +8,7 @@ volatile bool Sensor::CMOSToggle;
 volatile uint32_t Sensor::CMOSHalfCycles;
 volatile uint32_t Sensor::CMOSTStartCycles;
 volatile uint32_t Sensor::shutDownCount;
+volatile uint32_t Sensor::integrationCount;
 
 volatile uint32_t Sensor::adcDataCount;
 
@@ -48,14 +49,8 @@ void Sensor::read(bool switchE)
     digitalWrite(ST, HIGH);
     spiSettings = SPISettings(ADC_CLK_SPEED, MSBFIRST, SPI_MODE0);
     //SPI.begin();
-
-    for (int i = 0; i < PIXEL_COUNT; i++)
-    {
-        adcData[i] = 0;
-    }
     
     errorSwitch = switchE;
-
     shutDownCount = 0;
     adcDataCount = 0;
 
@@ -254,16 +249,17 @@ void Sensor::ADCReceive()
         /*adcData[adcDataCount - TRIG_OVER] = (SPI.transfer16(0) >> 2);
         uint16_t temp = adcData[adcDataCount - TRIG_OVER] & 0b1111'0000'0000'0000;
         adcData[adcDataCount - TRIG_OVER] = (adcData[adcDataCount - TRIG_OVER] & ~temp) | (temp >> 1);*/
-        adcData[adcDataCount - TRIG_OVER] = 0; //reinitialize the pixel
+        uint16_t temp = 0;
         double spiHalfPeriod = 1'000'000'000./(ADC_CLK_SPEED * 2); //half of the adc clock speed in nanoseconds
         for (int i = 0; i < 14; i++)
         {
             digitalWriteFast(SCK, HIGH);
             delayNanoseconds(spiHalfPeriod);//i dont like this 
-            digitalWriteFast(SCK, LOW);
-            adcData[adcDataCount - TRIG_OVER] = adcData[adcDataCount - TRIG_OVER] | (digitalReadFast(MISO) << (13 - i));
+            digitalWriteFast(SCK, LOW); 
+            temp = temp | (digitalReadFast(MISO) << (13 - i));       
             delayNanoseconds(spiHalfPeriod);//i also dont like this
         }
+        adcData[adcDataCount - TRIG_OVER] += ((16384 - temp) / integrationCount);
     
         digitalWriteFast(TRIG_OUT, HIGH);
         //Serial.println(adcData[adcDataCount]);
@@ -289,9 +285,20 @@ uint16_t* Sensor::getData()
 {
     //return nullptr if the data is incomplete
     if (dataState)
+    {
         return adcData;
+    }
     else
         return nullptr;
+}
+
+
+void Sensor::clearData()
+{
+    for(int i = 0; i < PIXEL_COUNT; i++)
+    {
+        adcData[i] = 0;
+    }
 }
 
 
@@ -299,7 +306,12 @@ void Sensor::setStartCycles(int msec)
 {
     if (msec < 100)
         msec = 100;
+
+    integrationCount = ceil(msec / 100.);
+    Serial.print("Count: ");
+    Serial.println(integrationCount);
         
-    CMOSTStartCycles = msec / (1000. / (CMOS_CLK_SPEED * 2));
+    CMOSTStartCycles = 100 / (1000. / (CMOS_CLK_SPEED * 2));
+
     Serial.println(CMOSTStartCycles);
 }
