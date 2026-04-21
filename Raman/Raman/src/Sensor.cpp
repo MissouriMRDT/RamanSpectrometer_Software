@@ -259,7 +259,7 @@ void Sensor::ADCReceive()
             temp = temp | (digitalReadFast(MISO) << (13 - i));       
             delayNanoseconds(spiHalfPeriod);//i also dont like this
         }
-        adcData[adcDataCount - TRIG_OVER] += ((16384 - temp) / integrationCount);
+        adcData[adcDataCount - TRIG_OVER] += (16384 - temp);
     
         digitalWriteFast(TRIG_OUT, HIGH);
         //Serial.println(adcData[adcDataCount]);
@@ -304,14 +304,14 @@ void Sensor::clearData()
 
 void Sensor::setStartCycles(int msec)
 {
-    if (msec < 100)
-        msec = 100;
+    if (msec < 10)
+        msec = 10;
 
-    integrationCount = ceil(msec / 100.);
+    integrationCount = ceil(msec / 10.);
     Serial.print("Count: ");
     Serial.println(integrationCount);
         
-    CMOSTStartCycles = 100 / (1000. / (CMOS_CLK_SPEED * 2));
+    CMOSTStartCycles = 10 / (1000. / (CMOS_CLK_SPEED * 2));
 
     Serial.println(CMOSTStartCycles);
 }

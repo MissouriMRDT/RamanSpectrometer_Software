@@ -1,6 +1,8 @@
 #ifndef PIN_ASSIGNMENTS_H
 #define PIN_ASSIGNMENTS_H
 
+#define PIXEL_COUNT 2048
+
 //Linear CMOS Sensor Pins
 #define CMOS_CLK 25
 #define ADC_CLK 24

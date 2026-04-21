@@ -14,6 +14,12 @@
 #include "vl53l4cx_class.h"
 #include <cfloat>
 
+void doRoveComm();
+void doGantryButtons();
+void doTelementary();
+void doRamanTelementary();
+#define TELLEMENTARY_MILLIS 100
+
 //RoveComm
 RoveCommEthernet roveComm;
 RoveCommPacket packet;
@@ -26,12 +32,12 @@ RoveCommPacket packet;
 
 ACAN_T4_Settings acanSettings(125 * 1000);
 Smoco smoco(&ATAN_T4_CAN, 0x09);
-int16_t instrumentGantrySpeed = 0;
 
 //Telemetry
 float telemetryCounter;
 
-const float INCHES_PER_STEP = 1.0f;
+const float MM_TO_INCH = 0.0393701f;
+const float STEPS_PER_INCH = -7541 / 2.03;
 
 //TOF
 uint16_t tofCallibrationOffset = 0;
@@ -50,9 +56,10 @@ uint8_t watchdogOverride = 0;
 //Sensor stuff
 Sensor cmosSensor;
 uint16_t* adcDataP;
-bool waitForADC = false;
+bool waitForADC = false, backgroundScan = false;
 uint32_t integrationCycles = 1;
 uint32_t integrationCount = 0;
+uint32_t backgroundSub[PIXEL_COUNT];
 
 void feedWatchdog();
 void estop();

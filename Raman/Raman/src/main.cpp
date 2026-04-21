@@ -3,14 +3,12 @@
 
 float dataMax = 0;
 
-void calibrateSMOCO();
-
-//TESTING TESTING TESTING
-SPISettings spiSettings(70'000'000, MSBFIRST, SPI_MODE0);
-void ADCTest();
-
 void setup()
 {
+  for (int i = 0; i < PIXEL_COUNT; i++)
+  {
+    backgroundSub[i] = 0;
+  }
   
   pinMode(24, OUTPUT);
   digitalWrite(24, HIGH);
@@ -68,160 +66,29 @@ void setup()
   Serial.println(tofSensor->InitSensor(tofAddress));
   tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
 
-  //Smoco setup:                                                                                                                                                                                                                                                                                                                                             
-  //calibrateSMOCO();
+  //Smoco setup:
   smoco.setSoftLimitPosition(INT32_MIN, INT32_MAX);
   smoco.setRampRate(200);
-  //smoco.calibratePosition((INT16_MIN / 4), 0);
-
-
+  smoco.configAngleConversion(0, STEPS_PER_INCH);
 
   for(float datum : fakeData)
   {
     if (datum > dataMax)
       dataMax = datum;
   }
-
-  //Serial.print("ADC...\n");
-  //delay(500);
-  //cmosSensor.read();
-
 }
 
 void loop() {
   //Process ping data                                                                         
-  //receiveCAN();
+  receiveCAN();
 
-  //Check for RoveComm Packets:
-  roveComm.read(packet); 
+  doRoveComm();
 
-  //process RoveComm Packets:
-  switch (packet.dataId)
-  { 
-  //Laser Toggle
-  case RC_RAMANBOARD_LASER_DATA_ID:
-    
-    digitalWrite(FAN_OUT, packet.i8data[0]);
-    digitalWrite(LASER_OUT, packet.i8data[0]);
-    break;
-  //Read Raman Data
-  case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
-    cmosSensor.setStartCycles(packet.i32data[0]);
-    integrationCycles = ceil(((packet.i32data[0] < 100 ? 100 : packet.i32data[0])) / 100.);
-    Serial.print("aaaaa: ");
-    Serial.println(integrationCycles);
-    static bool eSwitch = false;
-    cmosSensor.read(eSwitch);
-    eSwitch = !eSwitch;
-    waitForADC = true;
-    break;
+  doGantryButtons();
 
-  case RC_RAMANBOARD_INSTRUMENTSAXIS_DATA_ID:
-    instrumentGantrySpeed = packet.i16data[0];
-    feedWatchdog();
-
-    break;
-  case RC_RAMANBOARD_WATCHDOGOVERRIDE_DATA_ID:
-    watchdogOverride = packet.i8data[0];
-    break;
-  case RC_RAMANBOARD_CALIBRATEENCODER_DATA_ID:
-    smoco.calibratePosition(INT16_MIN / 4, 0);
-    break;
-  case RC_RAMANBOARD_LIMITSWITCHOVERRIDE_DATA_ID:
-    uint8_t limitData = packet.i8data[0];
-    smoco.configIgnoreLimits(limitData & 1, limitData & 2);
-    break;
-  }
-  
-
-  //Gantry Button Inputs
-  if (!digitalRead(CAN_SW1) && digitalRead(CAN_SW2))
+  if (millis() - telemetryCounter > TELLEMENTARY_MILLIS)
   {
-    smoco.driveOpenLoop(INT16_MAX/2);                                                                                                                                                                                                                                                                                                                                                                                                                                                 
-    Serial.println("Driving Forward");
-    feedWatchdog();
-  }
-  else if (digitalRead(CAN_SW1) && !digitalRead(CAN_SW2))
-  {
-    smoco.driveOpenLoop(INT16_MIN/2);
-    Serial.println("Driving Backward");
-    feedWatchdog();
-  }
-  else
-    smoco.driveOpenLoop(instrumentGantrySpeed);
-
-  //If both buttons are down then assume TOF calibration state
-  if (!digitalRead(CAN_SW1) && !digitalRead(CAN_SW2))
-    calibrationState = true;
-
-  if (millis() - telemetryCounter > 500)
-  {
-    //Tof Telementary Data Retrieval
-    VL53L4CX_MultiRangingData_t multiRangingData;
-
-    if (!tofFailed)
-    {
-      tofSensor->VL53L4CX_GetMultiRangingData(&multiRangingData);
-      Serial.println((float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset));
-      tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
-
-      float positionData[2] = {smoco.getPosition() * INCHES_PER_STEP, (float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset)};
-      if (calibrationState)
-      {
-        tofCallibrationOffset = positionData[1];
-        calibrationState = false;
-      }
-
-      roveComm.write(RC_RAMANBOARD_POSITION_DATA_ID, RC_RAMANBOARD_POSITION_DATA_COUNT, positionData);
-    }
-
-    //Limit switches 
-    //uint8_t limitSwitchData[2] = {digitalRead(LIMIT_SW1), digitalRead(LIMIT_SW2)};
-    //roveComm.write(RC_RAMANBOARD_LIMITSWITCH_DATA_ID, 2, limitSwitchData);
-
-    //SMOCO ping
-    smoco.ping();
-    uint16_t smocoPingData = smoco.getPingTime(); 
-    roveComm.write(RC_RAMANBOARD_SMOCOPING_DATA_ID, 1, &smocoPingData);
-
-
-    //SMOCO limits
-    uint8_t limitData = (smoco.getLimitSwitchA()) | (smoco.getLimitSwitchB() ? (1 << 1) : 0);
-    roveComm.write(RC_RAMANBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
-
-    //uint16_t* test = new uint16_t[512];
-    //for (int i = 0; i < 512; i++)
-    //test[i] = i;
-    //roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 400, test);
-    //delay(2000);
-
-    //Sensor Data
-    adcDataP = cmosSensor.getData();
-    if (waitForADC == true && adcDataP != nullptr)
-    {
-      if (integrationCount < integrationCycles - 1)
-      {
-        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
-        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
-        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
-        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
-        cmosSensor.read(false);
-        integrationCount++;
-      }
-      else
-      {
-        integrationCount = 0;
-        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
-        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
-        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
-        roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
-        cmosSensor.clearData();
-        Serial.println("Sending...");
-
-        waitForADC = false;
-      }
-      //sei();
-    }
+    doTelementary();
     telemetryCounter = millis();
   }
 }
@@ -229,7 +96,7 @@ void loop() {
 //Watchdog Stuff
 void estop() {
     if (!watchdogOverride) {
-      instrumentGantrySpeed = 0;
+      smoco.driveOpenLoop(0);
       Serial.printf("%d: WATCHDOG\n", millis());
     }
 }
@@ -237,17 +104,6 @@ void estop() {
 
 void feedWatchdog() {
     Watchdog.begin(estop, WATCHDOG_TIMEOUT);
-}
-
-
-void calibrateSMOCO()
-{
-  while (!smoco.getLimitSwitchA())
-  {
-    smoco.driveOpenLoop(1000);
-  }
-  smoco.driveOpenLoop(0);
-  smoco.calibratePosition(INT16_MIN / 4, 0);
 }
 
 
@@ -304,25 +160,178 @@ void receiveCAN()
 } 
 
 
-
-void ADCTest()
+void doRoveComm()
 {
-  SPI.begin();
-  SPI.beginTransaction(spiSettings);
-  delay(500);
+  //Check for RoveComm Packets:
+  roveComm.read(packet); 
 
-  Serial.println("Staring ADC");
+  //process RoveComm Packets:
+  switch (packet.dataId)
+  { 
+  //Laser Toggle
+  case RC_RAMANBOARD_LASER_DATA_ID:
+    
+    digitalWrite(FAN_OUT, packet.i8data[0]);
+    digitalWrite(LASER_OUT, packet.i8data[0]);
+    break;
+  //Read Raman Data
+  case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
+    if (packet.i32data[0]%10 != 1)
+      integrationCycles = ceil(((packet.i32data[0] < 10 ? 10 : packet.i32data[0])) / 10.);
+    else
+      backgroundScan = true;
+    cmosSensor.setStartCycles(packet.i32data[0]);
+    static bool eSwitch = false;
+    cmosSensor.read(eSwitch);
+    eSwitch = !eSwitch;
+    waitForADC = true;
+    break;
 
-  digitalWriteFast(33, LOW);//CVNST low
+  case RC_RAMANBOARD_INSTRUMENTSAXIS_DATA_ID:
+    //Open loop gantry driving
+    smoco.driveOpenLoop(packet.i16data[0]);
+    feedWatchdog();
 
-  uint16_t results = SPI.transfer16(0);
-  results = results << 1;
-  //results = results & 0b11111111111111;
-  
-  delay(100);
-  Serial.printf("ADC Results: %f | ", ((float)results/UINT16_MAX) * 5.);
-  Serial.println(results, BIN);
-  SPI.endTransaction();
-  SPI.end();
-  digitalWrite(33, HIGH);
+    break;
+  case RC_RAMANBOARD_WATCHDOGOVERRIDE_DATA_ID:
+    //override watchdog, why?
+    watchdogOverride = packet.i8data[0];
+    break;
+  case RC_RAMANBOARD_CALIBRATEENCODER_DATA_ID:
+  {
+    //calibrate smoco: THIS WILL MOVE THE GANTRY AND PREVENT INPUTS UNTIL IT IS DONE
+    uint8_t oldWatchdogOverride = watchdogOverride;
+    watchdogOverride = 1;
+    smoco.calibratePosition(INT16_MAX * 0.8, 0);
+    uint32_t timeout = millis() + 10000;
+    while (!smoco.getCalibrated() && millis() < timeout) {
+      delay(500);
+      Serial.println("CALIBRATING");
+    }
+    watchdogOverride = oldWatchdogOverride;
+    break;
+  }
+  case RC_RAMANBOARD_LIMITSWITCHOVERRIDE_DATA_ID:
+    //ignore limits, why?
+    uint8_t limitData = packet.i8data[0];
+    smoco.setIgnoreLimit(limitData & 1, limitData & 2);
+    break;
+  }
+}
+
+
+void doGantryButtons()
+{
+  //Gantry Button Inputs
+  if (!digitalRead(CAN_SW1) && digitalRead(CAN_SW2))
+  {
+    smoco.driveOpenLoop(INT16_MAX * .8);                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+    Serial.println("Driving Forward");
+    feedWatchdog();
+  }
+  else if (digitalRead(CAN_SW1) && !digitalRead(CAN_SW2))
+  {
+    smoco.driveOpenLoop(INT16_MIN/2);
+    Serial.println("Driving Backward");
+    feedWatchdog();
+  }
+
+  //If both buttons are down then assume TOF calibration state
+  if (!digitalRead(CAN_SW1) && !digitalRead(CAN_SW2))
+    calibrationState = true;
+
+}
+
+
+void doTelementary()
+{
+  //Tof Telementary Data Retrieval
+  VL53L4CX_MultiRangingData_t multiRangingData;
+
+  if (!tofFailed)
+  {
+    tofSensor->VL53L4CX_GetMultiRangingData(&multiRangingData);
+    //Serial.println((float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset));
+    tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
+    
+    float positionData[2] = {smoco.getAngle(), MM_TO_INCH * (float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset)};
+    if (calibrationState)
+    {
+      tofCallibrationOffset = positionData[1];
+      calibrationState = false;
+    }
+
+    Serial.println(positionData[0]);
+
+    roveComm.write(RC_RAMANBOARD_POSITION_DATA_ID, RC_RAMANBOARD_POSITION_DATA_COUNT, positionData);
+  }
+
+  //SMOCO ping
+  smoco.ping();
+  uint16_t smocoPingData = smoco.getPingTime(); 
+  roveComm.write(RC_RAMANBOARD_SMOCOPING_DATA_ID, 1, &smocoPingData);
+
+
+  //SMOCO limits
+  uint8_t limitData = (smoco.getLimitSwitchForward()) | (smoco.getLimitSwitchReverse() ? (1 << 1) : 0);
+  roveComm.write(RC_RAMANBOARD_LIMITSWITCH_DATA_ID, 1, &limitData);
+
+  //Sensor Data
+  adcDataP = cmosSensor.getData();
+  if (waitForADC == true && adcDataP != nullptr)
+  {
+    doRamanTelementary();
+  }
+}
+
+
+void doRamanTelementary()
+{
+  //clamp adc outputs
+  for (int i = 0; i < PIXEL_COUNT; i++)
+  {
+    adcDataP[i] = adcDataP[i] > 17000 ? 17000 : adcDataP[i] < 0 ? 0 : adcDataP[i];
+  }
+  //Background subtraction scan
+  if (backgroundScan)
+  {
+    backgroundScan = false;
+    for (int i = 0; i < PIXEL_COUNT; i++)
+    {
+      backgroundSub[i] = adcDataP[i];
+    }
+
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
+  }
+  //integration cycles.
+  else if (integrationCount < integrationCycles - 1)
+  {
+    for (int i = 0; i < PIXEL_COUNT; i++)
+    {
+      adcDataP[i] -= backgroundSub[i];
+    }
+    integrationCount++;
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
+    cmosSensor.read(false);
+  }
+  //Final cycle.
+  else
+  {
+    integrationCount = 0;
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
+    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
+    cmosSensor.clearData();
+    Serial.println("Sending...");
+
+    waitForADC = false;
+  }
+  //sei();
 }
