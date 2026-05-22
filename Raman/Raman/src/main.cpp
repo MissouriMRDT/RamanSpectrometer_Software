@@ -96,6 +96,8 @@ void loop() {
 //Watchdog Stuff
 void estop() {
     if (!watchdogOverride) {
+      digitalWrite(FAN_OUT, 0);
+      digitalWrite(LASER_OUT, 0);
       smoco.driveOpenLoop(0);
       Serial.printf("%d: WATCHDOG\n", millis());
     }
@@ -173,18 +175,29 @@ void doRoveComm()
     
     digitalWrite(FAN_OUT, packet.i8data[0]);
     digitalWrite(LASER_OUT, packet.i8data[0]);
+    feedWatchdog();
     break;
   //Read Raman Data
   case RC_RAMANBOARD_REQUESTRAMANREADING_DATA_ID:
-    if (packet.i32data[0]%10 != 1)
-      integrationCycles = ceil(((packet.i32data[0] < 10 ? 10 : packet.i32data[0])) / 10.);
+    if (packet.i32data[0] == 404 && packet.i32data[1] == 404)
+    {
+      dataCanceled = true;
+      cmosSensor.cancelData();
+    }
+    else if (packet.i32data[0] == 405 && packet.i32data[1] == 405)
+      cmosSensor.clearBackground();
     else
-      backgroundScan = true;
-    cmosSensor.setStartCycles(packet.i32data[0]);
-    static bool eSwitch = false;
-    cmosSensor.read(eSwitch);
-    eSwitch = !eSwitch;
-    waitForADC = true;
+    {
+      dataCanceled = false;
+      cmosSensor.setMode(packet.i32data[0] % 10);
+      integrationCycles = packet.i32data[1];
+      cmosSensor.setStartCycles(packet.i32data[0]);
+      cmosSensor.setRepeats(integrationCycles);
+      static bool eSwitch = false;
+      cmosSensor.read(eSwitch);
+      eSwitch = !eSwitch;
+      waitForADC = true;
+    }
     break;
 
   case RC_RAMANBOARD_INSTRUMENTSAXIS_DATA_ID:
@@ -202,13 +215,15 @@ void doRoveComm()
     //calibrate smoco: THIS WILL MOVE THE GANTRY AND PREVENT INPUTS UNTIL IT IS DONE
     uint8_t oldWatchdogOverride = watchdogOverride;
     watchdogOverride = 1;
-    smoco.calibratePosition(INT16_MAX * 0.8, 0);
+    smoco.calibratePosition(INT16_MIN * 0.8, 0);
     uint32_t timeout = millis() + 10000;
     while (!smoco.getCalibrated() && millis() < timeout) {
       delay(500);
       Serial.println("CALIBRATING");
     }
     watchdogOverride = oldWatchdogOverride;
+    tofCalibrationOrig = getTOF(false);
+    smocoCalibrated = true;
     break;
   }
   case RC_RAMANBOARD_LIMITSWITCHOVERRIDE_DATA_ID:
@@ -245,23 +260,20 @@ void doGantryButtons()
 
 void doTelementary()
 {
-  //Tof Telementary Data Retrieval
-  VL53L4CX_MultiRangingData_t multiRangingData;
-
   if (!tofFailed)
-  {
-    tofSensor->VL53L4CX_GetMultiRangingData(&multiRangingData);
-    //Serial.println((float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset));
-    tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
-    
-    float positionData[2] = {smoco.getAngle(), MM_TO_INCH * (float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset)};
+  { 
+    /*if (smocoCalibrated && abs(smoco.getAngle()) > 1)
+    {
+      tofCallibrationScalar = (smoco.getAngle() / abs(getTOF(false) - tofCalibrationOrig));
+      smocoCalibrated = false;
+    }*/
+
+    float positionData[2] = {smoco.getAngle(), getTOF()};
     if (calibrationState)
     {
-      tofCallibrationOffset = positionData[1];
+      tofCallibrationOffset = positionData[1] + tofCallibrationOffset;
       calibrationState = false;
     }
-
-    Serial.println(positionData[0]);
 
     roveComm.write(RC_RAMANBOARD_POSITION_DATA_ID, RC_RAMANBOARD_POSITION_DATA_COUNT, positionData);
   }
@@ -287,43 +299,9 @@ void doTelementary()
 
 void doRamanTelementary()
 {
-  //clamp adc outputs
-  for (int i = 0; i < PIXEL_COUNT; i++)
+  Serial.println("try send");
+  if (!dataCanceled)
   {
-    adcDataP[i] = adcDataP[i] > 17000 ? 17000 : adcDataP[i] < 0 ? 0 : adcDataP[i];
-  }
-  //Background subtraction scan
-  if (backgroundScan)
-  {
-    backgroundScan = false;
-    for (int i = 0; i < PIXEL_COUNT; i++)
-    {
-      backgroundSub[i] = adcDataP[i];
-    }
-
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
-  }
-  //integration cycles.
-  else if (integrationCount < integrationCycles - 1)
-  {
-    for (int i = 0; i < PIXEL_COUNT; i++)
-    {
-      adcDataP[i] -= backgroundSub[i];
-    }
-    integrationCount++;
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
-    roveComm.write(RC_RAMANBOARD_RAMANREADING_PART4_DATA_ID, 512, &adcDataP[1536]);
-    cmosSensor.read(false);
-  }
-  //Final cycle.
-  else
-  {
-    integrationCount = 0;
     roveComm.write(RC_RAMANBOARD_RAMANREADING_PART1_DATA_ID, 512 , &adcDataP[0]);
     roveComm.write(RC_RAMANBOARD_RAMANREADING_PART2_DATA_ID, 512, &adcDataP[512]);
     roveComm.write(RC_RAMANBOARD_RAMANREADING_PART3_DATA_ID, 512, &adcDataP[1024]);
@@ -332,6 +310,28 @@ void doRamanTelementary()
     Serial.println("Sending...");
 
     waitForADC = false;
+    //sei();
   }
-  //sei();
+  else
+  {
+    cmosSensor.clearData();
+    dataCanceled = false;
+    waitForADC = false;
+  }
 }
+
+float getTOF(bool a)
+{
+  delay(10);
+  tofSensor->VL53L4CX_GetMultiRangingData(&multiRangingData);
+  delay(10);
+  //Serial.println((float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter) - tofCallibrationOffset));
+  tofSensor->VL53L4CX_ClearInterruptAndStartMeasurement();
+  delay(10);
+
+  return  (a ? tofCallibrationScalar : 1) * (float)((multiRangingData.RangeData[1].RangeMilliMeter > multiRangingData.RangeData[0].RangeMilliMeter ? multiRangingData.RangeData[1].RangeMilliMeter : multiRangingData.RangeData[0].RangeMilliMeter)) - (a ? tofCallibrationOffset : tofCallibrationOffset / tofCallibrationScalar);
+}
+
+
+
+

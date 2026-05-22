@@ -36,15 +36,19 @@ Smoco smoco(&ATAN_T4_CAN, 0x09);
 //Telemetry
 float telemetryCounter;
 
-const float MM_TO_INCH = 0.0393701f;
+const float MM_TO_INCH = 0.041f;
 const float STEPS_PER_INCH = -7541 / 2.03;
 
 //TOF
-uint16_t tofCallibrationOffset = 0;
-bool calibrationState = false;
+VL53L4CX_MultiRangingData_t multiRangingData;
+float tofCallibrationOffset = 0, tofCallibrationScalar = MM_TO_INCH;
+bool calibrationState = false, smocoCalibrated = false;
+float tofCalibrationOrig = 0;
 byte identifyTofAddress();
+float getTOF(bool in = true);
 VL53L4CX* tofSensor = new VL53L4CX(&Wire, TOF_GPID);
 bool tofFailed = false; 
+#define TOF_OFFSET -1
 
 
 // Watchdog
@@ -56,7 +60,7 @@ uint8_t watchdogOverride = 0;
 //Sensor stuff
 Sensor cmosSensor;
 uint16_t* adcDataP;
-bool waitForADC = false, backgroundScan = false;
+bool waitForADC = false, backgroundScan = false, dataCanceled = false;
 uint32_t integrationCycles = 1;
 uint32_t integrationCount = 0;
 uint32_t backgroundSub[PIXEL_COUNT];

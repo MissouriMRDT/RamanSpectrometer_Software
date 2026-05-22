@@ -25,10 +25,14 @@ public:
     Sensor();
     ~Sensor();
 
-    void read(bool);
+    static void read(bool);
+    void cancelData();
     uint16_t* getData();
+    void setMode(uint8_t);
     void setStartCycles(int);
+    void setRepeats(uint16_t);
     static void clearData();
+    static void clearBackground();
 private:
     static void stepCMOS();
     static void ADCReceive();
@@ -42,8 +46,12 @@ private:
     static volatile uint32_t CMOSTStartCycles;
     static volatile uint32_t shutDownCount;
     static volatile uint32_t integrationCount;
+    static uint8_t mode; 
+    static volatile uint16_t repeats;
+    static uint16_t repeatAmount;
     
     static uint16_t adcData[PIXEL_COUNT];
+    static uint16_t backgroundData[PIXEL_COUNT];
     static volatile uint32_t adcDataCount;
 
     static volatile bool dataState;

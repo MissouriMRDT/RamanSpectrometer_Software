@@ -9,6 +9,9 @@ volatile uint32_t Sensor::CMOSHalfCycles;
 volatile uint32_t Sensor::CMOSTStartCycles;
 volatile uint32_t Sensor::shutDownCount;
 volatile uint32_t Sensor::integrationCount;
+volatile uint16_t Sensor::repeats; 
+uint16_t Sensor::repeatAmount;
+uint8_t Sensor::mode;
 
 volatile uint32_t Sensor::adcDataCount;
 
@@ -16,6 +19,7 @@ volatile bool Sensor::dataState;
 volatile bool Sensor::errorSwitch;
 
 uint16_t Sensor::adcData[];
+uint16_t Sensor::backgroundData[];
 
 
 Sensor::Sensor()
@@ -26,6 +30,13 @@ Sensor::Sensor()
     pinMode(MISO, INPUT_PULLDOWN);
     //digitalWrite(ST, HIGH);
     dataState = false;
+    mode = 0;
+    repeats = 0;
+    repeatAmount = 0;
+    for(int i = 0; i < PIXEL_COUNT; i++)
+    {
+        backgroundData[i] = 0;
+    }
 }
 
 
@@ -199,8 +210,6 @@ void Sensor::stepCMOS()
             }
 
         }
-        
-
 
         //SPI.endTransaction();
         detachInterrupt(EOS);
@@ -259,8 +268,11 @@ void Sensor::ADCReceive()
             temp = temp | (digitalReadFast(MISO) << (13 - i));       
             delayNanoseconds(spiHalfPeriod);//i also dont like this
         }
-        adcData[adcDataCount - TRIG_OVER] += (16384 - temp);
-    
+        int dataChange = (16384 - temp - backgroundData[adcDataCount - TRIG_OVER]) / (mode == 1 ? (repeatAmount) : 1);
+        adcData[adcDataCount - TRIG_OVER] += (dataChange < 0 ? 0 : dataChange);
+        if (adcData[adcDataCount - TRIG_OVER] > 17000)
+            adcData[adcDataCount] = 17000;
+
         digitalWriteFast(TRIG_OUT, HIGH);
         //Serial.println(adcData[adcDataCount]);
 
@@ -273,7 +285,29 @@ void Sensor::ADCReceive()
             digitalWrite(ST, LOW);
             digitalWrite(SS, !SELECTION_STATE);
             CMOSTimer.end();
-            dataState = true;
+            
+            if (mode == 1 || mode == 2)
+            {
+                repeats++;
+                if (repeats < repeatAmount)
+                    read(false);
+                else
+                {
+                    repeats = 0;
+                    dataState = true;
+                }
+            }
+            else
+            {
+                if (mode == 4)
+                {
+                    for(int i = 0; i < PIXEL_COUNT; i++)
+                    {
+                        backgroundData[i] = adcData[i];
+                    }
+                }
+                dataState = true;
+            }
         }
     }
 
@@ -285,9 +319,7 @@ uint16_t* Sensor::getData()
 {
     //return nullptr if the data is incomplete
     if (dataState)
-    {
         return adcData;
-    }
     else
         return nullptr;
 }
@@ -307,11 +339,44 @@ void Sensor::setStartCycles(int msec)
     if (msec < 10)
         msec = 10;
 
-    integrationCount = ceil(msec / 10.);
+    integrationCount = 1;
     Serial.print("Count: ");
     Serial.println(integrationCount);
         
-    CMOSTStartCycles = 10 / (1000. / (CMOS_CLK_SPEED * 2));
+    CMOSTStartCycles = msec / (1000. / (CMOS_CLK_SPEED * 2));
 
     Serial.println(CMOSTStartCycles);
 }
+
+
+void Sensor::cancelData()
+{
+    if (!dataState)
+    {
+        repeats = repeatAmount;
+        CMOSHalfCycles = CMOSTStartCycles;
+    }
+}
+
+
+void Sensor::clearBackground()
+{
+    for(int i = 0; i < PIXEL_COUNT; i++)
+    {
+        backgroundData[i] = 0;
+    }
+}
+
+
+void Sensor::setMode(uint8_t mode)
+{
+    this->mode = mode;
+}
+
+
+void Sensor::setRepeats(uint16_t r)
+{
+    repeatAmount = r;
+}
+
+

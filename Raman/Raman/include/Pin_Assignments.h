@@ -34,7 +34,7 @@
 #define TOF_GPID 17 
 
 //Laser Diode
-#define LASER_OUT 33
+#define LASER_OUT 14
 
 //Servos
 #define SERVO1 37
